@@ -120,6 +120,7 @@ return {
       inline_dates        = true,    -- show SCHEDULED/DEADLINE info before TODO
       show_filename       = true,    -- append the source file name to headings
       heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
+      heading_max_length  = 70,      -- truncate headings after this many characters
       upcoming_days    = 10,
     })
   end

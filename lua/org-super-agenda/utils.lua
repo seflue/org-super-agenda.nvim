@@ -21,4 +21,10 @@ function U.get_org_files(dir)
   return res
 end
 
+-- truncate a string to `len` characters --------------------------------------
+function U.truncate(str, len)
+  if not len or #str <= len then return str end
+  return str:sub(1, len)
+end
+
 return U

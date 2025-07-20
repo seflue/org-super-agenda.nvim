@@ -1,5 +1,6 @@
 -- org-super-agenda – floating agenda view ------------------------------------
 local get_cfg  = require('org-super-agenda.config').get
+local utils    = require('org-super-agenda.utils')
 local V        = {}
 local hi_done  = false
 local state_hl = {} -- name → { group = 'HL', fields = { headline=true … } }
@@ -70,7 +71,7 @@ function V.render(groups, initial_cursor_pos)
       filename = (cfg.show_filename and it.file) and vim.fn.fnamemodify(it.file, ':t'):gsub('%.org$', ''),
       todo     = it.todo_state,
       priority = pri,
-      headline = it.headline,
+      headline = utils.truncate(it.headline, cfg.heading_max_length),
     }
     local order  = vim.deepcopy(cfg.heading_order or { 'filename', 'todo', 'priority', 'headline' })
     local tok    = {}
@@ -124,7 +125,7 @@ function V.render(groups, initial_cursor_pos)
           filename = (cfg.show_filename and it.file) and vim.fn.fnamemodify(it.file, ':t'):gsub('%.org$', ''),
           todo     = it.todo_state,
           priority = pri,
-          headline = it.headline,
+          headline = utils.truncate(it.headline, cfg.heading_max_length),
         }
         local order    = vim.deepcopy(cfg.heading_order or { 'filename', 'todo', 'priority', 'headline' })
 
