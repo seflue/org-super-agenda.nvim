@@ -45,7 +45,7 @@ local function load_org_files()
     -- nothing
   elseif loaded_raw.filename or loaded_raw._file then
     files = { loaded_raw }
-  elseif vim.tbl_islist(loaded_raw) then
+  elseif vim.islist(loaded_raw) then
     files = loaded_raw
   else
     for _,f in pairs(loaded_raw) do table.insert(files, f) end

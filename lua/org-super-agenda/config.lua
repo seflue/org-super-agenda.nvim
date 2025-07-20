@@ -56,7 +56,7 @@ M.defaults = {
         return deadline_ok or sched_ok
       end
     },
-    { name = 'Deadlines', matcher = function(it) return it.deadline ~= nil end },
+    { name = "Deadlines", matcher = function(i) return i.deadline ~= nil and i.todo_state ~= 'DONE' end, },
   },
 
   ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ M.defaults = {
     width        = 0.8,
     height       = 0.7,
     border       = 'rounded',
-    title        = 'Super Agenda',
+    title        = 'Org Super Agenda',
     title_pos    = 'center',
     margin_left  = 0, -- increasing this breaks stuff for now, so use with care
     margin_right = 0, -- increasing this is fine
@@ -79,7 +79,7 @@ M.defaults = {
   allow_unsafe_groups = true,        -- for :pred / :auto-map later
   group_format        = '* %s',      -- header text for groups
   other_group_name    = 'Other',     -- title for catchall group
-  show_other_group    = true,        -- disable to remove catchall group
+  show_other_group    = false,        -- disable to remove catchall group
   show_tags           = true,        -- display headline tags aligned right
   inline_dates        = true,        -- show SCHEDULED/DEADLINE info before TODO
   show_filename       = true,        -- append the source file name to headings

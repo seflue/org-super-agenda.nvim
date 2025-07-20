@@ -74,7 +74,7 @@ return {
             return it.deadline and it.deadline:is_past() and it.todo_state ~= 'DONE'
           end
         },
-        { name = '📍 Deadlines', matcher = function(i) return i.deadline ~= nil end },
+        { name = "📍 Deadlines", matcher = function(i) return i.deadline ~= nil and i.todo_state ~= 'DONE' end, },
         { name = '📅 Today', matcher = function(i) return i.scheduled and i.scheduled:is_today() end },
         { name = '🔥 Important', matcher = function(i) return i.priority == 'A' end },
         { name = '🏡 Personal', matcher = function(item) return item:has_tag('personal') end },
@@ -98,7 +98,7 @@ return {
       allow_unsafe_groups = true,    -- for :pred / :auto-map later
       group_format        = '* %s',  -- header text for groups
       other_group_name    = 'Other', -- title for catchall group
-      show_other_group    = true,   -- disable to remove catchall group
+      show_other_group    = false,   -- disable to remove catchall group
       show_tags           = true,    -- display headline tags aligned right
       inline_dates        = true,    -- show SCHEDULED/DEADLINE info before TODO
       show_filename       = true,    -- append the source file name to headings
