@@ -273,6 +273,25 @@ function V.render(groups, initial_cursor_pos)
     vim.keymap.set('n', k, wipe, { buffer = buf, silent = true })
   end
 
+  -- quick filters ---------------------------------------------------------
+  for _, st in ipairs(get_cfg().todo_states or {}) do
+    local km = st.keymap
+    if km and type(km) == 'string' and st.name then
+      vim.keymap.set('n', km, function()
+        wipe()
+        require('org-super-agenda').open(nil, { todo_filter = st.name })
+      end, { buffer = buf, silent = true })
+    end
+  end
+
+  local reset = get_cfg().filter_reset_keymap
+  if reset and type(reset) == 'string' then
+    vim.keymap.set('n', reset, function()
+      wipe()
+      require('org-super-agenda').open(nil)
+    end, { buffer = buf, silent = true })
+  end
+
   -- restore agenda cursor
   if initial_cursor_pos then
     vim.schedule(function()

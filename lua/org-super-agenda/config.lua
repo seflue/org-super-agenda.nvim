@@ -5,30 +5,34 @@ M.defaults = {
   -- where to look for org files
   org_files           = {}, -- explicit file paths
   org_directories     = {}, -- recurse for *.org
-  todo_keywords       = { 'TODO', 'PROGRESS', 'WAITING', 'DONE' },
+  filter_reset_keymap = 'oa',
 
   ---------------------------------------------------------------------------
   todo_states         = {
     {
       name           = 'TODO',
+      keymap         = 'ot',
       color          = '#FF5555',
       strike_through = false,
       fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
     },
     {
       name           = 'PROGRESS',
+      keymap         = 'op',
       color          = '#FFAA00',
       strike_through = false,
       fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
     },
     {
       name           = 'WAITING',
+      keymap         = 'ow',
       color          = '#BD93F9',
       strike_through = false,
       fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
     },
     {
       name           = 'DONE',
+      keymap         = 'od',
       color          = '#50FA7B',
       strike_through = true,
       fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },

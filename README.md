@@ -10,6 +10,7 @@ A Neovim plugin inspired by [org-super-agenda](https://github.com/alphapapa/org-
 - Smart groups: Today, Overdue, Upcoming … fully user‑defined
   - Group org items by priority, tags, scheduled dates, deadlines, etc.
 - Per‑state colors & strike‑through; highlight just the parts you care about
+- Quick filtering by TODO state with per-state keymaps (press `a` to show all)
 - Press <CR> on an agenda item to view its source headline in the same floating window and return to the agenda when that file is closed
 - Customize the order of filename, dates, TODO keywords and other parts of each heading
 
@@ -30,34 +31,37 @@ return {
   config = function()
     require("org-super-agenda").setup({
       org_directories     = {}, -- recurse for *.org
-      todo_keywords       = { 'TODO', 'PROGRESS', 'WAITING', 'DONE' }, -- only
-                            -- headlines with one of these states are listed
       todo_states         = {
         {
           name           = 'TODO',
+          keymap         = 'ot',
           color          = '#FF5555',
           strike_through = false,
           fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
         },
         {
           name           = 'PROGRESS',
+          keymap         = 'op',
           color          = '#FFAA00',
           strike_through = false,
           fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
         },
         {
           name           = 'WAITING',
+          keymap         = 'ow',
           color          = '#BD93F9',
           strike_through = false,
           fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
         },
         {
           name           = 'DONE',
+          keymap         = 'od',
           color          = '#50FA7B',
           strike_through = true,
           fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-        },
       },
+      },
+      filter_reset_keymap = 'oa',
       window           = {
         width        = 0.8,
         height       = 0.7,

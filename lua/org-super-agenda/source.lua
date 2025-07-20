@@ -113,8 +113,8 @@ function S.collect_items()
   -- drop headlines without a recognized TODO keyword -----------------------
   ---------------------------------------------------------------------------
   local valid  = {}
-  for _, kw in ipairs(cfg().todo_keywords or {}) do
-    valid[kw] = true
+  for _, st in ipairs(cfg().todo_states or {}) do
+    if st.name then valid[st.name] = true end
   end
   local filtered = {}
   for _, it in ipairs(uniq) do
