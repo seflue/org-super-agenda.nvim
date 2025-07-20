@@ -109,7 +109,19 @@ function S.collect_items()
       table.insert(uniq, it)
     end
   end
-  return uniq
+  ---------------------------------------------------------------------------
+  -- drop headlines without a recognized TODO keyword -----------------------
+  ---------------------------------------------------------------------------
+  local valid  = {}
+  for _, kw in ipairs(cfg().todo_keywords or {}) do
+    valid[kw] = true
+  end
+  local filtered = {}
+  for _, it in ipairs(uniq) do
+    if valid[it.todo_state] then table.insert(filtered, it) end
+  end
+
+  return filtered
 end
 
 return S

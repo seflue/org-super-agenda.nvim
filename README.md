@@ -30,7 +30,8 @@ return {
   config = function()
     require("org-super-agenda").setup({
       org_directories     = {}, -- recurse for *.org
-      todo_keywords       = { 'TODO', 'PROGRESS', 'WAITING', 'DONE' },
+      todo_keywords       = { 'TODO', 'PROGRESS', 'WAITING', 'DONE' }, -- only
+                            -- headlines with one of these states are listed
       todo_states         = {
         {
           name           = 'TODO',
@@ -67,20 +68,36 @@ return {
         margin_right = 0,  -- increasing this is fine
       },
       -- NOTE: group specification. Order matters!. First matcher wins!
-      groups           = {
+      groups              = {
+        { name = "📅 Today", matcher = function(i) return i.scheduled and i.scheduled:is_today() end },
+        { name = "🗓️ Tomorrow", matcher = function(i) return i.scheduled and i.scheduled:days_from_today() == 1 end, },
         {
-          name = '⏰ Overdue',
-          matcher = function(it)
-            return it.deadline and it.deadline:is_past() and it.todo_state ~= 'DONE'
+          name = "⏰ Deadlines",
+          matcher = function(i)
+            return i.deadline ~= nil and i.todo_state ~= 'DONE' and
+                not i:has_tag("personal")
+          end,
+        },
+        {
+          name = "⭐ Important",
+          matcher = function(i)
+            return i.priority == "A" and
+                (i.deadline ~= nil or i.scheduled ~= nil)
           end
         },
-        { name = "📍 Deadlines", matcher = function(i) return i.deadline ~= nil and i.todo_state ~= 'DONE' end, },
-        { name = '📅 Today', matcher = function(i) return i.scheduled and i.scheduled:is_today() end },
-        { name = '🔥 Important', matcher = function(i) return i.priority == 'A' end },
-        { name = '🏡 Personal', matcher = function(item) return item:has_tag('personal') end },
-        { name = '💼 Work', matcher = function(item) return item:has_tag('work') end },
         {
-          name = '📆 Upcoming',
+          name = '⏳ Overdue',
+          matcher = function(it)
+            return it.todo_state ~= 'DONE' and (
+              (it.deadline and it.deadline:is_past()) or
+              (it.scheduled and it.scheduled:is_past())
+            )
+          end
+        },
+        { name = "🏠 Personal", matcher = function(item) return item:has_tag("personal") end },
+        { name = "💼 Work", matcher = function(item) return item:has_tag("work") end },
+        {
+          name = "📆 Upcoming",
           matcher = function(it)
             local days = require('org-super-agenda.config').get().upcoming_days or 10
             local deadline_ok = it.deadline and it.deadline:days_from_today() >= 0 and
