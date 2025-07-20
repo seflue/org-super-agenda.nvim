@@ -113,9 +113,11 @@ function V.render(groups, initial_cursor_pos)
         local indent = string.rep(' ', it.level)
         local pri    = (it.priority and it.priority ~= '') and ('[#' .. it.priority .. ']') or nil
 
-        local meta   = {}
-        if it.scheduled then table.insert(meta, 'SCHEDULED: <' .. tostring(it.scheduled) .. '>') end
-        if it.deadline then table.insert(meta, 'DEADLINE:  <' .. tostring(it.deadline) .. '>') end
+        local sched_label   = cfg.short_date_labels and 'S' or 'SCHEDULED'
+        local dead_label    = cfg.short_date_labels and 'D' or 'DEADLINE'
+        local meta          = {}
+        if it.scheduled then table.insert(meta, sched_label .. ': <' .. tostring(it.scheduled) .. '>') end
+        if it.deadline then table.insert(meta, dead_label .. ':  <' .. tostring(it.deadline) .. '>') end
         local meta_str = table.concat(meta, ' ')
 
         -------------------------------------------------------------------

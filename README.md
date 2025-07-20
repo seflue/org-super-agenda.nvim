@@ -118,6 +118,7 @@ return {
       show_other_group    = false,   -- disable to remove catchall group
       show_tags           = true,    -- display headline tags aligned right
       inline_dates        = true,    -- show SCHEDULED/DEADLINE info before TODO
+      short_date_labels   = false,   -- use 'S'/'D' instead of full labels
       show_filename       = true,    -- append the source file name to headings
       heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
       heading_max_length  = 70,      -- truncate headings after this many characters
