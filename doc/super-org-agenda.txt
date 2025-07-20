@@ -1,0 +1,124 @@
+*org-super-agenda.txt*    For plugin version |0.1|    Jun 2024
+
+org-super-agenda                                              *org-super-agenda*
+
+This plugin organizes your orgmode agenda in a floating window using
+custom groups.  It is inspired by the Emacs plugin org-super-agenda.
+
+===============================================================================
+USAGE                                                           *org-super-agenda-usage*
+
+    :OrgSuperAgenda
+        Opens the agenda window.  Use <CR> on a headline to jump to the
+        source location.  Use `q` or <Esc> to close the window.
+
+===============================================================================
+CONFIGURATION                                                   *org-super-agenda-setup*
+
+Call |lua| to setup the plugin:
+>
+    lua << EOF
+    require('org-super-agenda').setup({
+      org_directories = {},        -- recurse for *.org files
+      todo_keywords   = { 'TODO', 'PROGRESS', 'WAITING', 'DONE' },
+      -- additional options are documented in the source
+    })
+    EOF
+<
+The `groups` option controls how headlines are grouped.  By default
+items are grouped into "Today", "Important", "Overdue", "Upcoming" and
+"Deadlines" sections.
+
+===============================================================================
+DEFAULT OPTIONS                                                *org-super-agenda-options*
+
+The defaults (see |lua/org-super-agenda/config.lua|) are:
+>
+{
+  org_files           = {}, -- explicit file paths
+  org_directories     = {}, -- recurse for *.org
+  todo_keywords       = { 'TODO', 'PROGRESS', 'WAITING', 'DONE' },
+
+  ---------------------------------------------------------------------------
+  todo_states         = {
+    {
+      name           = 'TODO',
+      color          = '#FF5555',
+      strike_through = false,
+      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
+    },
+    {
+      name           = 'PROGRESS',
+      color          = '#FFAA00',
+      strike_through = false,
+      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
+    },
+    {
+      name           = 'WAITING',
+      color          = '#BD93F9',
+      strike_through = false,
+      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
+    },
+    {
+      name           = 'DONE',
+      color          = '#50FA7B',
+      strike_through = true,
+      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
+    },
+  },
+
+  ---------------------------------------------------------------------------
+  -- NOTE: group specification. Order matters!. First matcher wins!
+  groups              = {
+    { name = 'Today',     matcher = function(it) return it.scheduled and it.scheduled:is_today() end },
+    { name = 'Important', matcher = function(it) return it.priority == 'A' end },
+    {
+      name    = 'Overdue',
+      matcher = function(it)
+        return it.deadline and it.deadline:is_past() and it.todo_state ~= 'DONE'
+      end
+    },
+    {
+      name    = 'Upcoming',
+      matcher = function(it)
+        local days        = require('org-super-agenda.config').get().upcoming_days or 10
+        local deadline_ok = it.deadline and it.deadline:days_from_today() >= 0 and it.deadline:days_from_today() <= days
+        local sched_ok    = it.scheduled and it.scheduled:days_from_today() >= 0 and
+            it.scheduled:days_from_today() <= days
+        return deadline_ok or sched_ok
+      end
+    },
+    { name = 'Deadlines', matcher = function(it) return it.deadline ~= nil end },
+  },
+
+  ---------------------------------------------------------------------------
+  -- floating‑window style
+  window              = {
+    width        = 0.8,
+    height       = 0.7,
+    border       = 'rounded',
+    title        = 'Super Agenda',
+    title_pos    = 'center',
+    margin_left  = 0, -- increasing this breaks stuff for now, so use with care
+    margin_right = 0, -- increasing this is fine
+  },
+
+  ---------------------------------------------------------------------------
+  -- misc
+  upcoming_days       = 10,
+  hide_empty_groups   = false,       -- set true to drop blank sections
+  keep_order          = false,       -- keep original org‑agenda sort
+  allow_unsafe_groups = true,        -- for :pred / :auto-map later
+  group_format        = '* %s',      -- header text for groups
+  other_group_name    = 'Other',     -- title for catchall group
+  show_other_group    = true,        -- disable to remove catchall group
+  show_tags           = true,        -- display headline tags aligned right
+  inline_dates        = true,        -- show SCHEDULED/DEADLINE info before TODO
+  show_filename       = true,        -- append the source file name to headings
+  heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
+}
+<
+
+===============================================================================
+
+vim:tw=78:ts=8:ft=help:norl
