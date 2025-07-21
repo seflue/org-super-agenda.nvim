@@ -4,17 +4,18 @@
 
 A Neovim plugin inspired by [org-super-agenda](https://github.com/alphapapa/org-super-agenda) for Emacs. This plugin allows you to organize your org-mode agenda items into custom groups based on various criteria.
 
-** Features
-- One command: `:OrgSuperAgenda`, no buffers polluted
-- Simple and clean interface
-- Smart groups: Today, Overdue, Upcoming … fully user‑defined
-  - Group org items by priority, tags, scheduled dates, deadlines, etc.
-- Per‑state colors & strike‑through; highlight just the parts you care about
-- Quick filtering by TODO state with per-state keymaps (press `a` to show all)
-- Press <CR> on an agenda item to view its source headline in the same floating window and return to the agenda when that file is closed
-- Customize the order of filename, dates, TODO keywords and other parts of each heading
+## ✨ Features
 
-## Installation and configuration
+- One command: `:OrgSuperAgenda`, no buffers polluted  
+- Simple and clean interface  
+- Smart groups: Today, Overdue, Upcoming … fully user‑defined  
+  - Group org items by priority, tags, scheduled dates, deadlines, etc.  
+- Per‑state colors & strike‑through; highlight just the parts you care about  
+- Quick filtering by TODO state with per-state keymaps (press `oa` to show all)  
+- Press `<CR>` on an agenda item to view its source headline in the same floating window and return to the agenda when that file is closed  
+- Customize the order of filename, dates, TODO keywords and other parts of each heading  
+
+## 📦 Installation and configuration
 
 Using lazy.nvim:
 
@@ -59,7 +60,7 @@ return {
           color          = '#50FA7B',
           strike_through = true,
           fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-      },
+        },
       },
       filter_reset_keymap = 'oa',
       window           = {
@@ -112,7 +113,7 @@ return {
           end
         },
       },
-          ---------------------------------------------------------------------------
+      ---------------------------------------------------------------------------
       -- misc
       hide_empty_groups   = false,   -- set true to drop blank sections
       keep_order          = false,   -- keep original org‑agenda sort
@@ -126,22 +127,60 @@ return {
       show_filename       = true,    -- append the source file name to headings
       heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
       heading_max_length  = 70,      -- truncate headings after this many characters
-      upcoming_days    = 10,
+      upcoming_days       = 10,
     })
   end
 }
 ```
 
-# 🤝 Contributing
+## 🧠 Custom Groups with Lua
+
+Define your own agenda groups using Lua matchers — full control, no DSL required.
+
+```lua
+groups = {
+  {
+    name = "🔥 Urgent Work",
+    matcher = function(item)
+      return item:has_tag("work") and item.priority == "A"
+    end,
+  },
+  {
+    name = "💤 Someday",
+    matcher = function(item)
+      return item:has_tag("someday") or item.todo_state == "WAITING"
+    end,
+  },
+  {
+    name = "🧪 Experimental",
+    matcher = function(item)
+      return item.headline:match("Proof of Concept") or item:has_tag("test")
+    end,
+  },
+}
+```
+
+You can match based on:
+
+- `item.todo_state` — e.g. `'TODO'`, `'DONE'`, etc.
+- `item.headline` — the full text of the headline
+- `item:has_tag("tagname")` — tag checking
+- `item.priority` — `'A'`, `'B'`, `'C'` or `nil`
+- `item.scheduled`, `item.deadline` — both support methods like `:is_today()` or `:days_from_today()`
+
+💡 *Note:* Groups are checked in order. The **first match wins**!
+
+## 🤝 Contributing
 
 Found a bug? Have a feature request? Feel free to:
 
-1. Submit a pull request
-2. Open an issue
-3. Start a discussion
+1. Submit a pull request  
+2. Open an issue  
+3. Start a discussion  
 
-All contributions are welcome! 
+All contributions are welcome! 🎉
 
-# 📄 License
+## 📄 License
 
-MIT License - feel free to use this in your own projects!
+MIT License
+

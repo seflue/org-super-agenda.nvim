@@ -1,4 +1,4 @@
-*org-super-agenda.txt*    For plugin version |0.1|    Jun 2024
+*org-super-agenda.txt*    For plugin version |0.1|    Jul 2025
 
 org-super-agenda                                              *org-super-agenda*
 
@@ -26,9 +26,35 @@ Call |lua| to setup the plugin:
     })
     EOF
 <
+
 The `groups` option controls how headlines are grouped.  By default
 items are grouped into "Today", "Important", "Overdue", "Upcoming" and
 "Deadlines" sections.
+
+You can define your own custom groups using Lua functions. For example:
+>
+    groups = {
+      {
+        name = "🔥 Urgent Work",
+        matcher = function(item)
+          return item:has_tag("work") and item.priority == "A"
+        end,
+      },
+      {
+        name = "🧪 Experimental",
+        matcher = function(item)
+          return item.headline:match("Proof of Concept") or item:has_tag("test")
+        end,
+      },
+    }
+<
+
+Matchers have access to:
+- `item.todo_state`, `item.headline`, `item.priority`
+- `item:has_tag("...")`
+- `item.scheduled`, `item.deadline` with methods like `:is_today()` or `:days_from_today()`
+
+Groups are checked in order — the first match wins!
 
 ===============================================================================
 DEFAULT OPTIONS                                                *org-super-agenda-options*
@@ -39,7 +65,6 @@ The defaults (see |lua/org-super-agenda/config.lua|) are:
   org_files           = {}, -- explicit file paths
   org_directories     = {}, -- recurse for *.org
 
-  ---------------------------------------------------------------------------
   todo_states         = {
     {
       name           = 'TODO',
@@ -70,10 +95,9 @@ The defaults (see |lua/org-super-agenda/config.lua|) are:
       fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
     },
   },
+
   filter_reset_keymap = 'oa',
 
-  ---------------------------------------------------------------------------
-  -- NOTE: group specification. Order matters!. First matcher wins!
   groups              = {
     { name = "📅 Today", matcher = function(i) return i.scheduled and i.scheduled:is_today() end },
     { name = "🗓️ Tomorrow", matcher = function(i) return i.scheduled and i.scheduled:days_from_today() == 1 end, },
