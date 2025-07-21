@@ -74,6 +74,7 @@ function U.show_help()
 
   vim.list_extend(lines, {
     'Misc:',
+    fmt(km.toggle_other, 'Toggle "Other" group'),
     fmt('<CR>', 'Open headline'),
     fmt('q / <Esc>', 'Close agenda'),
     '',

@@ -1,7 +1,8 @@
 -- org-super-agenda.actions ---------------------------------------------------
-local utils = require('org-super-agenda.utils')
-local A = {}
-local get_cfg = require('org-super-agenda.config').get
+local utils   = require('org-super-agenda.utils')
+local config  = require('org-super-agenda.config')
+local A       = {}
+local get_cfg = config.get
 
 local function with_headline(line_map, cb)
   local cur = vim.api.nvim_win_get_cursor(0)
@@ -86,6 +87,20 @@ function A.set_keymaps(buf, win, line_map, reopen)
   end, { buffer = buf, silent = true })
 
   ------------------------------------------------------------------------
+  -- toggle Other group --------------------------------------------------
+  vim.keymap.set('n', cfg.keymaps.toggle_other, function()
+    local cur       = vim.api.nvim_win_get_cursor(0)
+    local agendabuf = vim.api.nvim_get_current_buf()
+    config.setup({ show_other_group = not get_cfg().show_other_group })
+    vim.schedule(function()
+      if vim.api.nvim_buf_is_valid(agendabuf) then
+        pcall(vim.api.nvim_buf_delete, agendabuf, { force = true })
+      end
+      reopen(cur)
+    end)
+  end, { buffer = buf, silent = true })
+
+  ------------------------------------------------------------------------
   -- Priorities ---------------------------------------------------------
   local function refresh_agenda(cur, agendabuf)
     vim.schedule(function()
@@ -142,8 +157,7 @@ function A.set_keymaps(buf, win, line_map, reopen)
     end)
   end, { buffer = buf, silent = true })
 
-vim.keymap.set('n', 'g?', utils.show_help, { buffer = buf, silent = true })
-
+  vim.keymap.set('n', 'g?', utils.show_help, { buffer = buf, silent = true })
 end
 
 return A

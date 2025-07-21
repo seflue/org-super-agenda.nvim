@@ -68,6 +68,7 @@ The defaults (see |lua/org-super-agenda/config.lua|) are:
 
   keymaps             = {
     filter_reset = 'oa',
+    toggle_other = 'oo',
     reschedule   = 'cs',
     set_deadline = 'cd',
   },
