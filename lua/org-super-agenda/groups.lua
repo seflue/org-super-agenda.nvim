@@ -15,7 +15,7 @@ function G.group_items(raw)
 
   local other
   if cfg().show_other_group then
-    other = { name = cfg().other_group_name or 'Other', items = {} }
+    other = { name = cfg().other_group_name, items = {} }
     table.insert(list, other)
   end
 

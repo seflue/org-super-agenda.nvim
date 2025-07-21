@@ -1,4 +1,5 @@
 -- org-super-agenda.actions ---------------------------------------------------
+local utils = require('org-super-agenda.utils')
 local A = {}
 local get_cfg = require('org-super-agenda.config').get
 
@@ -111,13 +112,13 @@ function A.set_keymaps(buf, win, line_map, reopen)
   end
 
   -- Setter ------------------------------------------------------
-  vim.keymap.set('n', cfg.keymaps.priority_A or 'cA', make_set_priority('A'), { buffer = buf, silent = true })
-  vim.keymap.set('n', cfg.keymaps.priority_B or 'cB', make_set_priority('B'), { buffer = buf, silent = true })
-  vim.keymap.set('n', cfg.keymaps.priority_C or 'cC', make_set_priority('C'), { buffer = buf, silent = true })
-  vim.keymap.set('n', cfg.keymaps.priority_clear or 'c0', make_set_priority(''), { buffer = buf, silent = true })
+  vim.keymap.set('n', cfg.keymaps.priority_A, make_set_priority('A'), { buffer = buf, silent = true })
+  vim.keymap.set('n', cfg.keymaps.priority_B, make_set_priority('B'), { buffer = buf, silent = true })
+  vim.keymap.set('n', cfg.keymaps.priority_C, make_set_priority('C'), { buffer = buf, silent = true })
+  vim.keymap.set('n', cfg.keymaps.priority_clear, make_set_priority(''), { buffer = buf, silent = true })
 
   -- step‑wise up / down --------------------------------------------
-  vim.keymap.set('n', cfg.keymaps.priority_up or 'c+', function()
+  vim.keymap.set('n', cfg.keymaps.priority_up, function()
     with_headline(line_map, function(cur, hl)
       local agendabuf = vim.api.nvim_get_current_buf()
       local p         = hl:priority_up()
@@ -129,7 +130,7 @@ function A.set_keymaps(buf, win, line_map, reopen)
     end)
   end, { buffer = buf, silent = true })
 
-  vim.keymap.set('n', cfg.keymaps.priority_down or 'c-', function()
+  vim.keymap.set('n', cfg.keymaps.priority_down, function()
     with_headline(line_map, function(cur, hl)
       local agendabuf = vim.api.nvim_get_current_buf()
       local p         = hl:priority_down()
@@ -140,6 +141,8 @@ function A.set_keymaps(buf, win, line_map, reopen)
       end
     end)
   end, { buffer = buf, silent = true })
+
+vim.keymap.set('n', 'g?', utils.show_help, { buffer = buf, silent = true })
 
 end
 
