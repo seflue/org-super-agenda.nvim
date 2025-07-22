@@ -76,6 +76,7 @@ function U.show_help()
     'Misc:',
     fmt(km.cycle_todo, 'Cycle TODO‑States'),
     fmt(km.toggle_other, 'Toggle "Other" group'),
+    fmt(km.reload,        'Reload agenda'),
     fmt('<CR>', 'Open headline'),
     fmt('q / <Esc>', 'Close agenda'),
     '',

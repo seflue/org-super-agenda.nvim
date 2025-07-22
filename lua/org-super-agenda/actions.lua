@@ -228,6 +228,14 @@ function A.set_keymaps(buf, win, line_map, reopen)
   end, { buffer = buf, silent = true })
 
   ------------------------------------------------------------------------
+  -- Reload (r) –-----------------------------
+  ------------------------------------------------------------------------
+  vim.keymap.set('n', cfg.keymaps.reload, function()
+    local cur = vim.api.nvim_win_get_cursor(0)
+    require('org-super-agenda').refresh(cur)
+  end, { buffer = buf, silent = true })
+
+  ------------------------------------------------------------------------
   -- Help ----------------------------------------------------------------
   vim.keymap.set('n', 'g?', utils.show_help, { buffer = buf, silent = true })
 end

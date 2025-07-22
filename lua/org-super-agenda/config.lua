@@ -17,6 +17,7 @@ M.defaults = {
     priority_B     = 'B',   -- Set directly to [#B]
     priority_C     = 'C',   -- Set directly to [#C]
     cycle_todo     = 't',   --  cycle TODO keyword
+    reload         = 'r',   -- reload agenda from disk
   },
 
   ---------------------------------------------------------------------------

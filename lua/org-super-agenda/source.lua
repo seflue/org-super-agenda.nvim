@@ -18,55 +18,68 @@ end
 -- Helper: obtain OrgApiFile list from nvim‑orgmode ---------------------------
 -------------------------------------------------------------------------------
 local function load_org_files()
-  local ok, api_root = pcall(require, 'orgmode.api')
-  if not ok or type(api_root) ~= 'table' then
-    log('orgmode.api missing'); return {}
-  end
-
-  local org_api = api_root.load and api_root or api_root.org
-  if not (org_api and org_api.load) then
-    log('no load() on orgmode.api'); return {}
-  end
-
   ---------------------------------------------------------------------------
-  -- Build path whitelist from config
+  -- 0.  Lookup‑Tabelle aller vom User gewünschten Org‑Dateien -------------
   ---------------------------------------------------------------------------
   local wanted = {}
   for _, f in ipairs(cfg().org_files) do wanted[utils.expand(f)] = true end
   for _, d in ipairs(cfg().org_directories) do
     for _, f in ipairs(utils.get_org_files(d)) do wanted[f] = true end
   end
-  log('wanted count = ' .. vim.tbl_count(wanted))
 
   ---------------------------------------------------------------------------
-  -- Pull *all* parsed files from orgmode
+  -- 1.  Geladene, aber **unveränderte** Buffer wegwerfen ------------------
   ---------------------------------------------------------------------------
-  local loaded_raw = org_api.load() -- returns map / list / single
-  -- log('raw load(): '..vim.inspect(loaded_raw))
-
-  local files = {}
-  if not loaded_raw then
-    -- nothing
-  elseif loaded_raw.filename or loaded_raw._file then
-    files = { loaded_raw }
-  elseif vim.islist(loaded_raw) then
-    files = loaded_raw
-  else
-    for _, f in pairs(loaded_raw) do table.insert(files, f) end
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    if name ~= '' and wanted[name]
+        and vim.api.nvim_buf_is_loaded(bufnr)
+        and not vim.api.nvim_buf_get_option(bufnr, 'modified') then
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end
   end
-  log('total files from orgmode = ' .. #files)
 
-  -- Apply whitelist, if any was specified
+  ---------------------------------------------------------------------------
+  -- 2.  Org‑Mode‑Datenbasis auffrischen -----------------------------------
+  ---------------------------------------------------------------------------
+  local ok_org, org = pcall(require, 'orgmode')
+  if ok_org and org and type(org.reload) == 'function' then
+    pcall(function() org:reload() end)
+  end
+
+  local ok_api, api_root = pcall(require, 'orgmode.api')
+  if not ok_api or type(api_root) ~= 'table' then return {} end
+  local org_api = api_root.load and api_root or api_root.org
+  if not (org_api and org_api.load) then return {} end
+
+  ---------------------------------------------------------------------------
+  -- 3.  Dateien laden, ggf. filtern → Liste `files` -----------------------
+  ---------------------------------------------------------------------------
+  local loaded_raw = org_api.load() -- map | list | single
+  local files      = {}
+
+  if loaded_raw then
+    if loaded_raw.filename or loaded_raw._file then
+      files = { loaded_raw }
+    elseif vim.islist(loaded_raw) then
+      files = loaded_raw
+    else
+      for _, f in pairs(loaded_raw) do files[#files + 1] = f end
+    end
+  end
+
   if next(wanted) then
     local filtered = {}
-    for _, f in ipairs(files) do if wanted[f.filename] then table.insert(filtered, f) end end
+    for _, f in ipairs(files) do
+      if wanted[f.filename] then filtered[#filtered + 1] = f end
+    end
     files = filtered
-    log('files after whitelist filter = ' .. #files)
   end
 
-  -- reload to be sure headlines are current
+  ---------------------------------------------------------------------------
+  -- 4.  Inhalt jedes Files wirklich **neu** parsen ------------------------
+  ---------------------------------------------------------------------------
   for i, f in ipairs(files) do files[i] = f:reload() end
-
   return files
 end
 
@@ -129,4 +142,3 @@ function S.collect_items()
 end
 
 return S
-
