@@ -16,6 +16,7 @@ M.defaults = {
     priority_A     = 'A',   -- Set directly to [#A]
     priority_B     = 'B',   -- Set directly to [#B]
     priority_C     = 'C',   -- Set directly to [#C]
+    cycle_todo     = 't',   --  cycle TODO keyword
   },
 
   ---------------------------------------------------------------------------

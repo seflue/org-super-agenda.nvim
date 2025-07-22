@@ -149,6 +149,84 @@ function A.set_keymaps(buf, win, line_map, reopen)
     end)
   end, { buffer = buf, silent = true })
 
+  -- ------------------------------------------------------------------------
+  -- Cycle TODO‑Keyword -----------------------------------------------------
+  -- ------------------------------------------------------------------------
+  vim.keymap.set('n', cfg.keymaps.cycle_todo, function()
+    with_headline(line_map, function(cur, hl)
+      local seq = {}
+      for _, s in ipairs(get_cfg().todo_states or {}) do
+        seq[#seq + 1] = s.name
+      end
+      if #seq == 0 then return end
+
+      local idx = 0
+      for i, v in ipairs(seq) do
+        if v == (hl.todo_value or '') then
+          idx = i; break
+        end
+      end
+      local next_state = seq[idx % #seq + 1]
+      local old_state  = hl.todo_value or ''
+
+      local bufnr      = vim.fn.bufnr(hl.file.filename)
+      local created    = false
+      if bufnr == -1 then
+        bufnr   = vim.fn.bufadd(hl.file.filename)
+        created = true
+      end
+      if not vim.api.nvim_buf_is_loaded(bufnr) then vim.fn.bufload(bufnr) end
+
+      local lnum = (hl.position and hl.position.start_line or 1) - 1
+      if lnum < 0 then return end
+      local line = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1]
+      if not line then return end
+
+      local stars, _, rest = line:match('^(%*+)%s+([A-Z]+)%s+(.*)$')
+      if not stars then stars, rest = line:match('^(%*+)%s+(.*)$') end
+      if not stars then return end
+
+      local new_line = (next_state == '')
+          and string.format('%s %s', stars, rest)
+          or string.format('%s %s %s', stars, next_state, rest)
+
+      vim.api.nvim_buf_set_lines(bufnr, lnum, lnum + 1, false, { new_line })
+      vim.api.nvim_buf_call(bufnr, function() vim.cmd('silent noautocmd write') end)
+      if created and vim.fn.bufwinnr(bufnr) == -1 then
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+      end
+
+      local agenda_buf  = buf
+      local agenda_lnum = cur[1] - 1
+      local row         = vim.api.nvim_buf_get_lines(
+        agenda_buf, agenda_lnum, agenda_lnum + 1, false
+      )[1] or ''
+
+      if old_state ~= '' then
+        row = row:gsub(old_state, (next_state == '' and '' or next_state), 1)
+      else
+        row = row:gsub('^%s*', '%0' .. next_state .. ' ')
+      end
+
+      vim.api.nvim_buf_set_option(agenda_buf, 'modifiable', true)
+      vim.api.nvim_buf_set_lines(agenda_buf, agenda_lnum, agenda_lnum + 1, false,
+        { row })
+      vim.api.nvim_buf_set_option(agenda_buf, 'modifiable', false)
+
+      if next_state == 'DONE' then
+        local hi = require('org-super-agenda.highlight')
+        vim.api.nvim_buf_clear_namespace(agenda_buf, view._ns,
+          agenda_lnum, agenda_lnum + 1)
+        vim.api.nvim_buf_add_highlight(
+          agenda_buf, view._ns, hi.group('DONE'),
+          agenda_lnum, 0, -1
+        )
+      else
+        require('org-super-agenda').refresh(cur)
+      end
+    end)
+  end, { buffer = buf, silent = true })
+
   ------------------------------------------------------------------------
   -- Help ----------------------------------------------------------------
   vim.keymap.set('n', 'g?', utils.show_help, { buffer = buf, silent = true })
