@@ -12,8 +12,9 @@ USAGE                                                           *org-super-agend
         Opens the agenda window.  Use <CR> on a headline to jump to the
         source location.  Use `q` or <Esc> to close the window.
         Press the keymap defined for a TODO state to filter by it and
-        `oa` to reset the filter.  Use `cs` to reschedule or `cd` to
-        set a deadline for the item under the cursor.
+        `oa` to reset the filter.  Use `cs` to reschedule, `cd` to set
+        a deadline, `t` to cycle TODO state and `r` to refresh the
+        agenda from disk.
 
 ===============================================================================
 CONFIGURATION                                                   *org-super-agenda-setup*
@@ -71,6 +72,8 @@ The defaults (see |lua/org-super-agenda/config.lua|) are:
     toggle_other = 'oo',
     reschedule   = 'cs',
     set_deadline = 'cd',
+    cycle_todo   = 't',
+    reload       = 'r',
   },
 
   todo_states         = {

@@ -10,7 +10,7 @@ local function with_headline(_, cb)
   local cur = vim.api.nvim_win_get_cursor(0)
   local it  = lm[cur[1]]
   if not (it and it.file and it._src_line) then
-    vim.notify('Kein Eintrag unter dem Cursor', vim.log.levels.WARN)
+    vim.notify('No entry under cursor', vim.log.levels.WARN)
     return
   end
 

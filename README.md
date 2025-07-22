@@ -18,7 +18,8 @@ A Neovim plugin inspired by [org-super-agenda](https://github.com/alphapapa/org-
 - Per‑state colors & strike‑through; highlight just the parts you care about
 - Quick filtering by TODO state with per-state keymaps (press `oa` to show all, `oo` to toggle the Other group)
 - Change the SCHEDULED date with `cs` or set a DEADLINE with `cd`
-- Press `<CR>` on an agenda item to view its source headline in the same floating window and return to the agenda when that file is closed  
+- Cycle TODO states with `t` and refresh the agenda with `r`
+- Press `<CR>` on an agenda item to view its source headline in the same floating window and return to the agenda when that file is closed
 - Customize the order of filename, dates, TODO keywords and other parts of each heading  
 
 ## 📦 Installation and configuration
@@ -73,6 +74,8 @@ return {
         toggle_other = 'oo',
         reschedule   = 'cs',
         set_deadline = 'cd',
+        cycle_todo   = 't',
+        reload       = 'r',
       },
       window           = {
         width        = 0.8,

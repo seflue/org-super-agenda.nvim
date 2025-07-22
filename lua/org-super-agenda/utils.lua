@@ -74,10 +74,10 @@ function U.show_help()
 
   vim.list_extend(lines, {
     'Misc:',
+    fmt('<CR>', 'Open headline'),
+    fmt(km.reload,        'Reload agenda'),
     fmt(km.cycle_todo, 'Cycle TODO‑States'),
     fmt(km.toggle_other, 'Toggle "Other" group'),
-    fmt(km.reload,        'Reload agenda'),
-    fmt('<CR>', 'Open headline'),
     fmt('q / <Esc>', 'Close agenda'),
     '',
     'g? / q / <Esc> close this help.',

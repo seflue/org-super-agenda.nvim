@@ -59,7 +59,7 @@ M.defaults = {
     { name = "🗓️ Tomorrow", matcher = function(i) return i.scheduled and i.scheduled:days_from_today() == 1 end, },
     -- { name = "⏰ Deadlines", matcher = function(i) return i.deadline ~= nil end },
     {
-      name = "⏰ Deadlines",
+      name = "☠️ Deadlines",
       matcher = function(i)
         return i.deadline ~= nil and i.todo_state ~= 'DONE' and
             not i:has_tag("personal")
