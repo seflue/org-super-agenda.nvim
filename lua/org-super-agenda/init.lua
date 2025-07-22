@@ -1,21 +1,18 @@
 -- org-super-agenda – entry point ------------------------------------------------
-local cfg    = require('org-super-agenda.config')
-local source = require('org-super-agenda.source')
-local groups = require('org-super-agenda.groups')
-local view   = require('org-super-agenda.view')
+local cfg      = require('org-super-agenda.config')
+local source   = require('org-super-agenda.source')
+local groups   = require('org-super-agenda.groups')
+local view     = require('org-super-agenda.view')
 
-local M      = {}
+local M        = {}
 
-function M.setup(opts)
-  cfg.setup(opts or {})
-  vim.api.nvim_create_user_command('OrgSuperAgenda', function() M.open() end, {})
-end
+M._last_opts   = {}
+M._last_cursor = nil
 
-function M.open(cursor_pos, opts)
+local function build_items(opts)
   opts = opts or {}
-  -- collect all headlines across configured org sources
   local items = source.collect_items()
-  -- optional filter by TODO state
+
   if opts.todo_filter then
     local wanted = {}
     if type(opts.todo_filter) == 'string' then
@@ -31,9 +28,42 @@ function M.open(cursor_pos, opts)
       items = filtered
     end
   end
-  -- Group and render
+  return items
+end
+
+local function do_render(cursor_pos, opts, reuse)
+  local items   = build_items(opts)
   local grouped = groups.group_items(items)
-  view.render(grouped, cursor_pos)
+  if reuse and view.is_open() then
+    view.update(grouped, cursor_pos)
+  else
+    view.render(grouped, cursor_pos)
+  end
+end
+
+function M.setup(opts)
+  cfg.setup(opts or {})
+  vim.api.nvim_create_user_command('OrgSuperAgenda', function() M.open() end, {})
+end
+
+--- open a (new) agenda view ---------------------------------------------------
+-- normally called by user :OrgSuperAgenda
+function M.open(cursor_pos, opts)
+  opts           = opts or {}
+  M._last_opts   = opts
+  M._last_cursor = cursor_pos
+  do_render(cursor_pos, opts, false) -- force fresh float
+end
+
+--- refresh existing agenda in-place (no flicker) ------------------------------
+-- used internally after edits (schedule, deadline, priority...)
+function M.refresh(cursor_pos, opts)
+  -- merge new opts into stored opts; new opts override
+  if opts then
+    M._last_opts = vim.tbl_deep_extend('force', M._last_opts or {}, opts)
+  end
+  M._last_cursor = cursor_pos or M._last_cursor
+  do_render(M._last_cursor, M._last_opts, true)
 end
 
 return M
