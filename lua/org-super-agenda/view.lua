@@ -123,6 +123,9 @@ function V.render(groups, cursor)
     title_pos = cfg.window.title_pos,
   })
   vim.api.nvim_win_set_option(win, 'wrap', false)
+  -- TODO: make this configurable
+  vim.api.nvim_win_set_option(win, 'cursorline', true)
+
 
   -- remember state
   V._buf = buf
