@@ -149,6 +149,25 @@ function A.set_keymaps(buf, win, line_map, reopen)
     end)
   end, { buffer = buf, silent = true })
 
+  ------------------------------------------------------------------------
+  -- Quick TODO filters --------------------------------------------------
+  for _, st in ipairs(get_cfg().todo_states or {}) do
+    if st.keymap and st.keymap ~= '' and st.name then
+      vim.keymap.set('n', st.keymap, function()
+        local cur = vim.api.nvim_win_get_cursor(0)
+        require('org-super-agenda').refresh(cur, { todo_filter = st.name })
+      end, { buffer = buf, silent = true })
+    end
+  end
+
+  if cfg.keymaps.filter_reset and cfg.keymaps.filter_reset ~= '' then
+    vim.keymap.set('n', cfg.keymaps.filter_reset, function()
+      local cur = vim.api.nvim_win_get_cursor(0)
+      -- passing nil removes the todo filter stored in the module
+      require('org-super-agenda').refresh(cur, { todo_filter = nil })
+    end, { buffer = buf, silent = true })
+  end
+
   -- ------------------------------------------------------------------------
   -- Cycle TODO‑Keyword -----------------------------------------------------
   -- ------------------------------------------------------------------------

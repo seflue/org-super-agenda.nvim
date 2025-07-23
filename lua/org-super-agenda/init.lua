@@ -60,6 +60,9 @@ end
 function M.refresh(cursor_pos, opts)
   -- merge new opts into stored opts; new opts override
   if opts then
+    if opts.todo_filter == nil and M._last_opts then
+      M._last_opts.todo_filter = nil
+    end
     M._last_opts = vim.tbl_deep_extend('force', M._last_opts or {}, opts)
   end
   M._last_cursor = cursor_pos or M._last_cursor
