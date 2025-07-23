@@ -76,6 +76,8 @@ return {
         set_deadline = 'cd',
         cycle_todo   = 't',
         reload       = 'r',
+        hide_item    = 'x',
+        reset_hidden = 'X',
       },
       window           = {
         width        = 0.8,
@@ -141,6 +143,7 @@ return {
       show_filename       = true,    -- append the source file name to headings
       heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
       heading_max_length  = 70,      -- truncate headings after this many characters
+      persist_hidden      = false,   -- keep hidden items across sessions
       upcoming_days       = 10,
     })
   end

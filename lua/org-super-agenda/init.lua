@@ -8,10 +8,25 @@ local M        = {}
 
 M._last_opts   = {}
 M._last_cursor = nil
+M._hidden      = {}
+
+local function key_of(it)
+  return string.format('%s:%s', it.file or '', it._src_line or 0)
+end
 
 local function build_items(opts)
   opts = opts or {}
   local items = source.collect_items()
+
+  if next(M._hidden) then
+    local filtered = {}
+    for _, it in ipairs(items) do
+      if not M._hidden[key_of(it)] then
+        filtered[#filtered + 1] = it
+      end
+    end
+    items = filtered
+  end
 
   if opts.todo_filter then
     local wanted = {}
@@ -67,6 +82,25 @@ function M.refresh(cursor_pos, opts)
   end
   M._last_cursor = cursor_pos or M._last_cursor
   do_render(M._last_cursor, M._last_opts, true)
+end
+
+function M.hide_current()
+  local lm  = require('org-super-agenda.view').line_map()
+  local cur = vim.api.nvim_win_get_cursor(0)
+  local it  = lm[cur[1]]
+  if not it then return end
+  M._hidden[key_of(it)] = true
+  M.refresh(cur)
+end
+
+function M.reset_hidden()
+  M._hidden = {}
+end
+
+function M.on_close()
+  if not cfg.get().persist_hidden then
+    M.reset_hidden()
+  end
 end
 
 return M

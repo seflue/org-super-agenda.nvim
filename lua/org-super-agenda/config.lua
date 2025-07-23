@@ -18,6 +18,8 @@ M.defaults = {
     priority_C     = 'C',   -- Set directly to [#C]
     cycle_todo     = 't',   --  cycle TODO keyword
     reload         = 'r',   -- reload agenda from disk
+    hide_item      = 'x',   -- hide item under cursor
+    reset_hidden   = 'X',   -- show all hidden items
   },
 
   ---------------------------------------------------------------------------
@@ -123,6 +125,7 @@ M.defaults = {
   show_filename       = true,    -- append the source file name to headings
   heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
   heading_max_length  = 70,      -- truncate headings after this many characters
+  persist_hidden      = false,   -- keep hidden items across agenda reopen
 }
 
 local cfg = vim.deepcopy(M.defaults)

@@ -39,6 +39,7 @@ function A.set_keymaps(buf, win, line_map, reopen)
     if vim.api.nvim_buf_is_valid(buf) then
       pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
+    require('org-super-agenda').on_close()
   end
   for _, k in ipairs({ 'q', '<Esc>' }) do
     vim.keymap.set('n', k, wipe, { buffer = buf, silent = true })
@@ -165,6 +166,19 @@ function A.set_keymaps(buf, win, line_map, reopen)
       local cur = vim.api.nvim_win_get_cursor(0)
       -- passing nil removes the todo filter stored in the module
       require('org-super-agenda').refresh(cur, { todo_filter = nil })
+    end, { buffer = buf, silent = true })
+  end
+
+  if cfg.keymaps.hide_item and cfg.keymaps.hide_item ~= '' then
+    vim.keymap.set('n', cfg.keymaps.hide_item, function()
+      require('org-super-agenda').hide_current()
+    end, { buffer = buf, silent = true })
+  end
+
+  if cfg.keymaps.reset_hidden and cfg.keymaps.reset_hidden ~= '' then
+    vim.keymap.set('n', cfg.keymaps.reset_hidden, function()
+      require('org-super-agenda').reset_hidden()
+      require('org-super-agenda').refresh(vim.api.nvim_win_get_cursor(0))
     end, { buffer = buf, silent = true })
   end
 
