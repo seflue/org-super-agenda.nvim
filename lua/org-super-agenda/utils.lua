@@ -78,6 +78,7 @@ function U.show_help()
     fmt(km.reload,        'Reload agenda'),
     fmt(km.cycle_todo, 'Cycle TODO‑States'),
     fmt(km.toggle_other, 'Toggle "Other" group'),
+    fmt(km.toggle_duplicates, 'Toggle duplicates'),
     fmt(km.hide_item, 'Hide headline from agenda'),
     fmt(km.reset_hidden, 'Reset hide'),
     fmt(km.toggle_other, 'Toggle "Other" group'),

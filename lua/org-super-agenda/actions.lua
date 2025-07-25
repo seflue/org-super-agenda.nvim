@@ -105,6 +105,14 @@ function A.set_keymaps(buf, win, line_map, reopen)
   end
 
   ------------------------------------------------------------------------
+  -- toggle duplicates ---------------------------------------------------
+  if cfg.keymaps.toggle_duplicates and cfg.keymaps.toggle_duplicates ~= '' then
+    vim.keymap.set('n', cfg.keymaps.toggle_duplicates, function()
+      require('org-super-agenda').toggle_duplicates()
+    end, { buffer = buf, silent = true })
+  end
+
+  ------------------------------------------------------------------------
   -- Priorities -----------------------------------------------------------
   local function do_refresh(cur)
     require('org-super-agenda').refresh(cur)

@@ -22,6 +22,7 @@ M.defaults = {
     reload         = 'r',   -- reload agenda from disk
     hide_item      = 'x',   -- hide item under cursor
     reset_hidden   = 'X',   -- show all hidden items
+    toggle_duplicates = 'D', -- show items in multiple groups
   },
 
   ---------------------------------------------------------------------------
@@ -117,6 +118,7 @@ M.defaults = {
   upcoming_days       = 10,
   hide_empty_groups   = false,   -- set true to drop blank sections
   keep_order          = false,   -- keep original org‑agenda sort
+  allow_duplicates    = false,   -- show items in every matching group
   allow_unsafe_groups = true,    -- for :pred / :auto-map later
   group_format        = '* %s',  -- header text for groups
   other_group_name    = 'Other', -- title for catchall group

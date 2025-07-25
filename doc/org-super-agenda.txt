@@ -58,7 +58,8 @@ Matchers have access to:
 - `item:has_tag("...")`
 - `item.scheduled`, `item.deadline` with methods like `:is_today()` or `:days_from_today()`
 
-Groups are checked in order — the first match wins!
+Groups are checked in order — the first match wins unless |allow_duplicates| is
+set.
 
 ===============================================================================
 DEFAULT OPTIONS                                                *org-super-agenda-options*
@@ -171,6 +172,7 @@ The defaults (see |lua/org-super-agenda/config.lua|) are:
   upcoming_days       = 10,
   hide_empty_groups   = false,       -- set true to drop blank sections
   keep_order          = false,       -- keep original org‑agenda sort
+  allow_duplicates    = false,       -- show items in multiple groups
   allow_unsafe_groups = true,        -- for :pred / :auto-map later
   group_format        = '* %s',      -- header text for groups
   other_group_name    = 'Other',     -- title for catchall group

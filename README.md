@@ -90,7 +90,8 @@ return {
         margin_left  = 0,  -- increasing this breaks stuff for now, so use with care
         margin_right = 0,  -- increasing this is fine
       },
-      -- NOTE: group specification. Order matters!. First matcher wins!
+      -- NOTE: group specification. Order matters! First matcher wins
+      -- unless `allow_duplicates` is true.
       groups              = {
         { name = "📅 Today", matcher = function(i) return i.scheduled and i.scheduled:is_today() end },
         { name = "🗓️ Tomorrow", matcher = function(i) return i.scheduled and i.scheduled:days_from_today() == 1 end, },
@@ -135,6 +136,7 @@ return {
       -- misc
       hide_empty_groups   = false,   -- set true to drop blank sections
       keep_order          = false,   -- keep original org‑agenda sort
+      allow_duplicates    = false,   -- show items in multiple groups
       allow_unsafe_groups = true,    -- for :pred / :auto-map later
       group_format        = '* %s',  -- header text for groups
       other_group_name    = 'Other', -- title for catchall group
@@ -187,7 +189,8 @@ You can match based on:
 - `item.priority` — `'A'`, `'B'`, `'C'` or `nil`
 - `item.scheduled`, `item.deadline` — both support methods like `:is_today()` or `:days_from_today()`
 
-💡 *Note:* Groups are checked in order. The **first match wins**!
+💡 *Note:* Groups are checked in order. The **first match wins** unless
+`allow_duplicates` is enabled.
 
 ## 🤝 Contributing
 

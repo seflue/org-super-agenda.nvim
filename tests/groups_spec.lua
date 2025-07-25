@@ -27,5 +27,47 @@ describe('group_items', function()
     end
   end)
 
+  it('respects allow_duplicates=false', function()
+    cfg.setup({
+      allow_duplicates = false,
+      show_other_group = false,
+      groups = {
+        { name = 'A', matcher = function(it) return it.a end },
+        { name = 'B', matcher = function(it) return it.b end },
+      },
+    })
+    local raw = { item{ a = true, b = true } }
+    local g = groups.group_items(raw)
+    local count = 0
+    for _, grp in ipairs(g) do
+      if #grp.items > 0 then
+        count = count + 1
+        assert.equals('A', grp.name)
+      end
+    end
+    assert.equals(1, count)
+  end)
+
+  it('allows duplicates when enabled', function()
+    cfg.setup({
+      allow_duplicates = true,
+      show_other_group = false,
+      groups = {
+        { name = 'A', matcher = function(it) return it.a end },
+        { name = 'B', matcher = function(it) return it.b end },
+      },
+    })
+    local raw = { item{ a = true, b = true } }
+    local g = groups.group_items(raw)
+    local found = {}
+    for _, grp in ipairs(g) do
+      if #grp.items > 0 then
+        table.insert(found, grp.name)
+      end
+    end
+    table.sort(found)
+    assert.same({ 'A', 'B' }, found)
+  end)
+
 end)
 

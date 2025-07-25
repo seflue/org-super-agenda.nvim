@@ -15,6 +15,7 @@ end
 -------------------------------------------------------------------------------
 function G.group_items(raw)
   local spec = cfg().groups
+  local allow_dupes = cfg().allow_duplicates
 
   local list, map = {}, {}
   for _, g in ipairs(spec) do
@@ -31,16 +32,16 @@ function G.group_items(raw)
   end
 
   for _, it in ipairs(raw) do
-    local placed = false
+    local placed = 0
     -- explizite Gruppen
     for _, g in ipairs(spec) do
       if g.matcher(it) then
         table.insert(map[g.name].items, it)
-        placed = true
-        break
+        placed = placed + 1
+        if not allow_dupes then break end
       end
     end
-    if not placed and other and not is_done_and_past(it) then
+    if placed == 0 and other and not is_done_and_past(it) then
       table.insert(other.items, it)
     end
   end

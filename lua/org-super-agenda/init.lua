@@ -97,6 +97,13 @@ function M.reset_hidden()
   M._hidden = {}
 end
 
+function M.toggle_duplicates()
+  local cur
+  if view.is_open() then cur = vim.api.nvim_win_get_cursor(0) end
+  cfg.setup({ allow_duplicates = not cfg.get().allow_duplicates })
+  if cur then M.refresh(cur) end
+end
+
 function M.on_close()
   if not cfg.get().persist_hidden then
     M.reset_hidden()
