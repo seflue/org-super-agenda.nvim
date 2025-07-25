@@ -39,6 +39,8 @@ return {
   config = function()
     require("org-super-agenda").setup({
       org_directories     = {}, -- recurse for *.org
+      exclude_files       = { "/some/file.org", "/some/other/file.org" }, -- ignore these files
+      exclude_directories = {}, -- ignore these directories
       todo_states         = {
         {
           name           = 'TODO',

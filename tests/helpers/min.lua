@@ -18,3 +18,5 @@ require('org-super-agenda').setup({
   org_directories = {},
 })
 
+if vim.islist == nil then vim.islist = vim.tbl_islist end
+

@@ -19,20 +19,26 @@ end
 -------------------------------------------------------------------------------
 local function load_org_files()
   ---------------------------------------------------------------------------
-  -- 0.  Lookup‑Tabelle aller vom User gewünschten Org‑Dateien -------------
+  -- 0. Prepare include / exclude sets --------------------------------------
   ---------------------------------------------------------------------------
-  local wanted = {}
-  for _, f in ipairs(cfg().org_files) do wanted[utils.expand(f)] = true end
-  for _, d in ipairs(cfg().org_directories) do
-    for _, f in ipairs(utils.get_org_files(d)) do wanted[f] = true end
+  local want, skip = {}, {}
+  local function add(tbl, k) if k and k ~= '' then tbl[utils.expand(k)] = true end end
+
+  for _, f in ipairs(cfg().org_files or {}) do add(want, f) end
+  for _, d in ipairs(cfg().org_directories or {}) do
+    for _, f in ipairs(utils.get_org_files(d)) do add(want, f) end
+  end
+  for _, f in ipairs(cfg().exclude_files or {}) do add(skip, f) end
+  for _, d in ipairs(cfg().exclude_directories or {}) do
+    for p in pairs(want) do if p:find('^' .. vim.pesc(utils.expand(d))) then skip[p] = true end end
   end
 
   ---------------------------------------------------------------------------
-  -- 1.  Geladene, aber **unveränderte** Buffer wegwerfen ------------------
+  -- 1.  Unchanged, already loaded buffers are deleted ----------------------
   ---------------------------------------------------------------------------
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     local name = vim.api.nvim_buf_get_name(bufnr)
-    if name ~= '' and wanted[name]
+    if want[name] and not skip[name]
         and vim.api.nvim_buf_is_loaded(bufnr)
         and not vim.api.nvim_buf_get_option(bufnr, 'modified') then
       vim.api.nvim_buf_delete(bufnr, { force = true })
@@ -40,44 +46,35 @@ local function load_org_files()
   end
 
   ---------------------------------------------------------------------------
-  -- 2.  Org‑Mode‑Datenbasis auffrischen -----------------------------------
+  -- 2. Reload the orgmode cache (only metadata, fast) -------------------
   ---------------------------------------------------------------------------
   local ok_org, org = pcall(require, 'orgmode')
-  if ok_org and org and type(org.reload) == 'function' then
-    pcall(function() org:reload() end)
-  end
+  if ok_org and type(org.reload) == 'function' then pcall(function() org:reload() end) end
 
-  local ok_api, api_root = pcall(require, 'orgmode.api')
-  if not ok_api or type(api_root) ~= 'table' then return {} end
+  local ok_api, api_root = pcall(require, 'orgmode.api'); if not ok_api then return {} end
   local org_api = api_root.load and api_root or api_root.org
   if not (org_api and org_api.load) then return {} end
 
   ---------------------------------------------------------------------------
-  -- 3.  Dateien laden, ggf. filtern → Liste `files` -----------------------
+  -- 3. Now **specifically** parse only the desired files -------------------
   ---------------------------------------------------------------------------
-  local loaded_raw = org_api.load() -- map | list | single
-  local files      = {}
-
-  if loaded_raw then
-    if loaded_raw.filename or loaded_raw._file then
-      files = { loaded_raw }
-    elseif vim.islist(loaded_raw) then
-      files = loaded_raw
-    else
-      for _, f in pairs(loaded_raw) do files[#files + 1] = f end
+  local files = {}
+  for path in pairs(want) do
+    if not skip[path] then
+      local ok, f = pcall(org_api.load, path) -- load file by path
+      if ok and f then
+        if f.filename or f._file then
+          table.insert(files, f)
+          log('loaded file: ' .. (f.filename or f._file or 'unknown'))
+        elseif vim.islist(f) then
+          vim.list_extend(files, f)
+        end
+      end
     end
   end
 
-  if next(wanted) then
-    local filtered = {}
-    for _, f in ipairs(files) do
-      if wanted[f.filename] then filtered[#filtered + 1] = f end
-    end
-    files = filtered
-  end
-
   ---------------------------------------------------------------------------
-  -- 4.  Inhalt jedes Files wirklich **neu** parsen ------------------------
+  -- 4. Final: hard reload each file to have fresh headlines ---------------
   ---------------------------------------------------------------------------
   for i, f in ipairs(files) do files[i] = f:reload() end
   return files

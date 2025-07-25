@@ -5,6 +5,8 @@ M.defaults = {
   -- where to look for org files
   org_files           = {}, -- explicit file paths
   org_directories     = {}, -- recurse for *.org
+  exclude_files       = {}, -- do not load these files
+  exclude_directories = {}, -- skip *.org under these dirs
   keymaps             = {
     filter_reset   = 'oa',  -- reset all filters
     toggle_other   = 'oo',  -- show/hide the Other group

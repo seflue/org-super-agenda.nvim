@@ -23,7 +23,9 @@ Call |lua| to setup the plugin:
 >
     lua << EOF
     require('org-super-agenda').setup({
-      org_directories = {},        -- recurse for *.org files
+      org_directories     = {},        -- recurse for *.org files
+      exclude_files       = {},        -- files to ignore
+      exclude_directories = {},        -- directories to ignore
       -- additional options are documented in the source
     })
     EOF
@@ -63,9 +65,11 @@ DEFAULT OPTIONS                                                *org-super-agenda
 
 The defaults (see |lua/org-super-agenda/config.lua|) are:
 >
-{
+{ 
   org_files           = {}, -- explicit file paths
   org_directories     = {}, -- recurse for *.org
+  exclude_files       = {}, -- files to ignore
+  exclude_directories = {}, -- dirs to ignore
 
   keymaps             = {
     filter_reset = 'oa',
