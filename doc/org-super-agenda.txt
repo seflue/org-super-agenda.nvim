@@ -14,7 +14,8 @@ USAGE                                                           *org-super-agend
         Press the keymap defined for a TODO state to filter by it and
         `oa` to reset the filter.  Use `cs` to reschedule, `cd` to set
         a deadline, `t` to cycle TODO state and `r` to refresh the
-        agenda from disk.
+        agenda from disk.  Press `K` to preview the current
+        headline and `q` to close the preview.
 
 ===============================================================================
 CONFIGURATION                                                   *org-super-agenda-setup*
@@ -80,6 +81,7 @@ The defaults (see |lua/org-super-agenda/config.lua|) are:
     cycle_todo   = 't',
     reload       = 'r',
     hide_item    = 'x',
+    preview      = 'K',
     reset_hidden = 'X',
   },
 

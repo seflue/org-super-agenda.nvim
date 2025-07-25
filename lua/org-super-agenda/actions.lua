@@ -30,6 +30,47 @@ local function with_headline(_, cb)
   cb(cur, hl)
 end
 
+local function preview_headline(line_map)
+  with_headline(line_map, function(_, hl)
+    local lines = {}
+    if hl._section and hl._section.get_lines then
+      lines = hl._section:get_lines()
+    elseif hl.position and hl.position.start_line and hl.position.end_line then
+      local bufnr = vim.fn.bufnr(hl.file.filename)
+      if bufnr == -1 then bufnr = vim.fn.bufadd(hl.file.filename) end
+      if not vim.api.nvim_buf_is_loaded(bufnr) then vim.fn.bufload(bufnr) end
+      lines = vim.api.nvim_buf_get_lines(bufnr,
+        hl.position.start_line - 1,
+        hl.position.end_line,
+        false)
+    end
+    if #lines == 0 then return end
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    vim.bo[buf].filetype = 'org'
+
+    local ui = vim.api.nvim_list_uis()[1]
+    local h  = math.min(#lines + 2, math.floor(ui.height * 0.6))
+    local w  = math.min(80, math.floor(ui.width * 0.8))
+    local win = vim.api.nvim_open_win(buf, true, {
+      relative = 'editor',
+      style    = 'minimal',
+      border   = 'rounded',
+      width    = w,
+      height   = h,
+      col      = math.floor((ui.width - w) / 2),
+      row      = math.floor((ui.height - h) / 2),
+      title    = 'Org Preview',
+    })
+    local function close()
+      if vim.api.nvim_win_is_valid(win) then
+        vim.api.nvim_win_close(win, true)
+      end
+    end
+    vim.keymap.set('n', 'q', close, { buffer = buf, silent = true })
+  end)
+end
+
 function A.set_keymaps(buf, win, line_map, reopen)
   local cfg = get_cfg()
 
@@ -174,6 +215,12 @@ function A.set_keymaps(buf, win, line_map, reopen)
       local cur = vim.api.nvim_win_get_cursor(0)
       -- passing nil removes the todo filter stored in the module
       require('org-super-agenda').refresh(cur, { todo_filter = nil })
+    end, { buffer = buf, silent = true })
+  end
+
+  if cfg.keymaps.preview and cfg.keymaps.preview ~= '' then
+    vim.keymap.set('n', cfg.keymaps.preview, function()
+      preview_headline(line_map)
     end, { buffer = buf, silent = true })
   end
 

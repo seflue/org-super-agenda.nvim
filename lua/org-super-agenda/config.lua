@@ -21,6 +21,7 @@ M.defaults = {
     cycle_todo     = 't',   --  cycle TODO keyword
     reload         = 'r',   -- reload agenda from disk
     hide_item      = 'x',   -- hide item under cursor
+    preview        = 'K',   -- preview headline under cursor
     reset_hidden   = 'X',   -- show all hidden items
     toggle_duplicates = 'D', -- show items in multiple groups
   },
