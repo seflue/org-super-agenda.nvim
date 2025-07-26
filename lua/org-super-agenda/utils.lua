@@ -75,10 +75,11 @@ function U.show_help()
   vim.list_extend(lines, {
     'Misc:',
     fmt('<CR>', 'Open headline'),
-    fmt(km.reload,        'Reload agenda'),
+    fmt(km.reload, 'Reload agenda'),
     fmt(km.cycle_todo, 'Cycle TODO‑States'),
     fmt(km.toggle_other, 'Toggle "Other" group'),
     fmt(km.toggle_duplicates, 'Toggle duplicates'),
+    fmt(km.cycle_view, 'Switch view (classic/compact)'),
     fmt(km.hide_item, 'Hide headline from agenda'),
     fmt(km.reset_hidden, 'Reset hide'),
     fmt('q / <Esc>', 'Close agenda'),
@@ -92,12 +93,12 @@ function U.show_help()
   local buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, out)
   vim.bo[buf].modifiable = false
-  vim.bo[buf].filetype = 'text'
+  vim.bo[buf].filetype   = 'text'
 
-  local ui  = vim.api.nvim_list_uis()[1]
-  local h   = #out + 2
-  local w   = 50
-  local win = vim.api.nvim_open_win(buf, true, {
+  local ui               = vim.api.nvim_list_uis()[1]
+  local h                = #out + 2
+  local w                = 50
+  local win              = vim.api.nvim_open_win(buf, true, {
     relative = 'editor',
     style    = 'minimal',
     border   = 'rounded',

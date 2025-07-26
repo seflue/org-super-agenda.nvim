@@ -49,10 +49,10 @@ local function preview_headline(line_map)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.bo[buf].filetype = 'org'
 
-    local ui = vim.api.nvim_list_uis()[1]
-    local h  = math.min(#lines + 2, math.floor(ui.height * 0.6))
-    local w  = math.min(80, math.floor(ui.width * 0.8))
-    local win = vim.api.nvim_open_win(buf, true, {
+    local ui             = vim.api.nvim_list_uis()[1]
+    local h              = math.min(#lines + 2, math.floor(ui.height * 0.6))
+    local w              = math.min(80, math.floor(ui.width * 0.8))
+    local win            = vim.api.nvim_open_win(buf, true, {
       relative = 'editor',
       style    = 'minimal',
       border   = 'rounded',
@@ -322,6 +322,14 @@ function A.set_keymaps(buf, win, line_map, reopen)
     local cur = vim.api.nvim_win_get_cursor(0)
     require('org-super-agenda').refresh(cur)
   end, { buffer = buf, silent = true })
+
+  ------------------------------------------------------------------------
+  -- Cycle View -----------------------------------------------------
+  if cfg.keymaps.cycle_view and cfg.keymaps.cycle_view ~= '' then
+    vim.keymap.set('n', cfg.keymaps.cycle_view, function()
+      require('org-super-agenda').cycle_view()
+    end, { buffer = buf, silent = true })
+  end
 
   ------------------------------------------------------------------------
   -- Help ----------------------------------------------------------------

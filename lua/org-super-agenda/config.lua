@@ -3,27 +3,28 @@ local M = {}
 M.defaults = {
   ---------------------------------------------------------------------------
   -- where to look for org files
-  org_files           = {}, -- explicit file paths
-  org_directories     = {}, -- recurse for *.org
-  exclude_files       = {}, -- do not load these files
-  exclude_directories = {}, -- skip *.org under these dirs
+  org_files           = {},   -- explicit file paths
+  org_directories     = {},   -- recurse for *.org
+  exclude_files       = {},   -- do not load these files
+  exclude_directories = {},   -- skip *.org under these dirs
   keymaps             = {
-    filter_reset   = 'oa',  -- reset all filters
-    toggle_other   = 'oo',  -- show/hide the Other group
-    reschedule     = 'cs',  -- change SCHEDULED date of item under cursor
-    set_deadline   = 'cd',  -- change DEADLINE date of item under cursor
-    priority_up    = '+',   -- Increase priority by one level (C→B→A)
-    priority_down  = '-',   -- Decrease priority by one level (A→B→C→none)
-    priority_clear = '0',   -- Remove priority entirely
-    priority_A     = 'A',   -- Set directly to [#A]
-    priority_B     = 'B',   -- Set directly to [#B]
-    priority_C     = 'C',   -- Set directly to [#C]
-    cycle_todo     = 't',   --  cycle TODO keyword
-    reload         = 'r',   -- reload agenda from disk
-    hide_item      = 'x',   -- hide item under cursor
-    preview        = 'K',   -- preview headline under cursor
-    reset_hidden   = 'X',   -- show all hidden items
-    toggle_duplicates = 'D', -- show items in multiple groups
+    filter_reset      = 'oa', -- reset all filters
+    toggle_other      = 'oo', -- show/hide the Other group
+    reschedule        = 'cs', -- change SCHEDULED date of item under cursor
+    set_deadline      = 'cd', -- change DEADLINE date of item under cursor
+    priority_up       = '+',  -- Increase priority by one level (C→B→A)
+    priority_down     = '-',  -- Decrease priority by one level (A→B→C→none)
+    priority_clear    = '0',  -- Remove priority entirely
+    priority_A        = 'A',  -- Set directly to [#A]
+    priority_B        = 'B',  -- Set directly to [#B]
+    priority_C        = 'C',  -- Set directly to [#C]
+    cycle_todo        = 't',  --  cycle TODO keyword
+    reload            = 'r',  -- reload agenda from disk
+    hide_item         = 'x',  -- hide item under cursor
+    preview           = 'K',  -- preview headline under cursor
+    reset_hidden      = 'X',  -- show all hidden items
+    toggle_duplicates = 'D',  -- show items in multiple groups
+    cycle_view        = 'ov', -- NEW: switch between classic/compact
   },
 
   ---------------------------------------------------------------------------
@@ -117,20 +118,27 @@ M.defaults = {
   ---------------------------------------------------------------------------
   -- misc
   upcoming_days       = 10,
-  hide_empty_groups   = false,   -- set true to drop blank sections
+  hide_empty_groups   = true,   -- set true to drop blank sections
   keep_order          = false,   -- keep original org‑agenda sort
   allow_duplicates    = false,   -- show items in every matching group
-  allow_unsafe_groups = true,    -- for :pred / :auto-map later
   group_format        = '* %s',  -- header text for groups
   other_group_name    = 'Other', -- title for catchall group
   show_other_group    = false,   -- disable to remove catchall group
   show_tags           = true,    -- display headline tags aligned right
-  inline_dates        = true,    -- show SCHEDULED/DEADLINE info before TODO
-  short_date_labels   = false,   -- use 'S'/'D' instead of 'SCHEDULED'/'DEADLINE'
   show_filename       = true,    -- append the source file name to headings
-  heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
   heading_max_length  = 70,      -- truncate headings after this many characters
   persist_hidden      = false,   -- keep hidden items across agenda reopen
+  view_mode           = 'classic', -- 'classic' | 'compact'
+  classic             = {
+    heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
+    short_date_labels   = false,   -- use 'S'/'D' instead of 'SCHEDULED'/'DEADLINE'
+    inline_dates        = true,    -- show SCHEDULED/DEADLINE info before TODO
+  },
+  compact             = {
+    filename_min_width = 10,        -- pad "alpha:" column at least to this
+    label_min_width    = 12,       -- pad label column ("Sched. 6x:")
+  },
+  debug               = false,
 }
 
 local cfg = vim.deepcopy(M.defaults)

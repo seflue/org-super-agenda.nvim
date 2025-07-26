@@ -1,4 +1,3 @@
--- org-super-agenda – entry point ------------------------------------------------
 local cfg      = require('org-super-agenda.config')
 local source   = require('org-super-agenda.source')
 local groups   = require('org-super-agenda.groups')
@@ -49,12 +48,16 @@ end
 local function do_render(cursor_pos, opts, reuse)
   local items   = build_items(opts)
   local grouped = groups.group_items(items)
+  local mode    = cfg.get().view_mode or 'classic'
+  local data    = grouped
+
   if reuse and view.is_open() then
-    view.update(grouped, cursor_pos)
+    view.update(data, cursor_pos, mode)
   else
-    view.render(grouped, cursor_pos)
+    view.render(data, cursor_pos, mode)
   end
 end
+
 
 function M.setup(opts)
   cfg.setup(opts or {})
@@ -102,6 +105,14 @@ function M.toggle_duplicates()
   if view.is_open() then cur = vim.api.nvim_win_get_cursor(0) end
   cfg.setup({ allow_duplicates = not cfg.get().allow_duplicates })
   if cur then M.refresh(cur) end
+end
+
+function M.cycle_view()
+  local cur = view.is_open() and vim.api.nvim_win_get_cursor(0) or nil
+  local mode = cfg.get().view_mode or 'classic'
+  local next_mode = (mode == 'classic') and 'compact' or 'classic'
+  cfg.setup({ view_mode = next_mode })
+  if cur then M.refresh(cur) else M.open() end
 end
 
 function M.on_close()

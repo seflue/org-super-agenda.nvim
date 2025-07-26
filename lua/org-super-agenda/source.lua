@@ -8,7 +8,7 @@ local Item  = require('org-super-agenda.org_item')
 
 local S     = {}
 
-DEBUG       = false
+DEBUG       = cfg().debug or false
 local function log(msg)
   if not DEBUG then return end
   print('[OSA:source] ' .. msg)
