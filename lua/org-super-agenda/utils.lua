@@ -68,7 +68,8 @@ function U.show_help()
       lines[#lines + 1] = fmt(st.keymap, 'Show only ' .. st.name)
     end
   end
-  lines[#lines + 1] = fmt(km.filter_reset, 'Reset all filters')
+  lines[#lines + 1] = fmt(km.filter, 'Filter by keyword')
+  lines[#lines + 1] = fmt(km.filter_fuzzy, 'Filter by keyword (fuzzy)')
 
   if any_filter then lines[#lines + 1] = '' end
 
