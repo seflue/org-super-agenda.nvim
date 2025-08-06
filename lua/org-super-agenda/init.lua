@@ -9,6 +9,15 @@ local M        = {}
 M._last_opts   = {}
 M._last_cursor = nil
 M._hidden      = {}
+M._undo_stack = {}
+
+
+function M.push_undo(fn)  M._undo_stack[#M._undo_stack+1] = fn end
+function M.pop_undo()
+  local f = table.remove(M._undo_stack)
+  if f then pcall(f) end
+end
+
 
 local function key_of(it)
   return string.format('%s:%s', it.file or '', it._src_line or 0)

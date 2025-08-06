@@ -2,8 +2,44 @@
 local utils   = require('org-super-agenda.utils')
 local config  = require('org-super-agenda.config')
 local view    = require('org-super-agenda.view')
+local core    = require('org-super-agenda')
 local A       = {}
 local get_cfg = config.get
+
+local function snapshot_headline(hl)
+  local bufnr = vim.fn.bufnr(hl.file.filename)
+  if bufnr == -1 then bufnr = vim.fn.bufadd(hl.file.filename) end
+  if not vim.api.nvim_buf_is_loaded(bufnr) then vim.fn.bufload(bufnr) end
+
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local start = hl.position.start_line
+  while start > 1 and not lines[start]:match("^%*+") do start = start - 1 end
+  local lvl  = #(lines[start]:match("^(%*+)"))
+  local stop = #lines
+  for i = start + 1, #lines do
+    local s = lines[i]:match("^(%*+)")
+    if s and #s <= lvl then
+      stop = i - 1; break
+    end
+  end
+  return {
+    bufnr = bufnr,
+    start = start,
+    stop  = stop,
+    seg   = vim.list_slice(lines, start, stop),
+  }
+end
+
+local function make_restore(snap)
+  return function()
+    vim.api.nvim_buf_set_lines(
+      snap.bufnr, snap.start - 1, snap.stop, false, snap.seg
+    )
+    vim.api.nvim_buf_call(snap.bufnr, function()
+      vim.cmd('silent noautocmd write')
+    end)
+  end
+end
 
 local function with_headline(_, cb)
   local lm  = view.line_map()
@@ -113,12 +149,13 @@ function A.set_keymaps(buf, win, line_map, reopen)
   -- reschedule -----------------------------------------------------------
   vim.keymap.set('n', cfg.keymaps.reschedule, function()
     with_headline(line_map, function(cur, hl)
+      local snap = snapshot_headline(hl)
       local p = hl:set_scheduled()
-      if p and type(p.next) == 'function' then
-        p:next(function() require('org-super-agenda').refresh(cur) end)
-      else
-        require('org-super-agenda').refresh(cur)
+      local function after()
+        core.push_undo(make_restore(snap))
+        core.refresh(cur)
       end
+      if p and type(p.next) == 'function' then p:next(after) else after() end
     end)
   end, { buffer = buf, silent = true })
 
@@ -126,12 +163,13 @@ function A.set_keymaps(buf, win, line_map, reopen)
   -- deadline -------------------------------------------------------------
   vim.keymap.set('n', cfg.keymaps.set_deadline, function()
     with_headline(line_map, function(cur, hl)
+      local snap = snapshot_headline(hl)
       local p = hl:set_deadline()
-      if p and type(p.next) == 'function' then
-        p:next(function() require('org-super-agenda').refresh(cur) end)
-      else
-        require('org-super-agenda').refresh(cur)
+      local function after()
+        core.push_undo(make_restore(snap))
+        core.refresh(cur)
       end
+      if p and type(p.next) == 'function' then p:next(after) else after() end
     end)
   end, { buffer = buf, silent = true })
 
@@ -155,19 +193,20 @@ function A.set_keymaps(buf, win, line_map, reopen)
 
   ------------------------------------------------------------------------
   -- Priorities -----------------------------------------------------------
-  local function do_refresh(cur)
-    require('org-super-agenda').refresh(cur)
+
+  local function apply_with_undo(cur, hl, op_fn)
+    local snap = snapshot_headline(hl)
+    core.push_undo(make_restore(snap))
+
+    local p = op_fn()
+    local function after() core.refresh(cur) end
+    if p and type(p.next) == 'function' then p:next(after) else after() end
   end
 
   local function make_set_priority(prio)
     return function()
       with_headline(line_map, function(cur, hl)
-        local p = hl:set_priority(prio)
-        if p and type(p.next) == 'function' then
-          p:next(function() do_refresh(cur) end)
-        else
-          do_refresh(cur)
-        end
+        apply_with_undo(cur, hl, function() return hl:set_priority(prio) end)
       end)
     end
   end
@@ -179,23 +218,13 @@ function A.set_keymaps(buf, win, line_map, reopen)
 
   vim.keymap.set('n', cfg.keymaps.priority_up, function()
     with_headline(line_map, function(cur, hl)
-      local p = hl:priority_up()
-      if p and type(p.next) == 'function' then
-        p:next(function() do_refresh(cur) end)
-      else
-        do_refresh(cur)
-      end
+      apply_with_undo(cur, hl, function() return hl:priority_up() end)
     end)
   end, { buffer = buf, silent = true })
 
   vim.keymap.set('n', cfg.keymaps.priority_down, function()
     with_headline(line_map, function(cur, hl)
-      local p = hl:priority_down()
-      if p and type(p.next) == 'function' then
-        p:next(function() do_refresh(cur) end)
-      else
-        do_refresh(cur)
-      end
+      apply_with_undo(cur, hl, function() return hl:priority_down() end)
     end)
   end, { buffer = buf, silent = true })
 
@@ -399,6 +428,12 @@ function A.set_keymaps(buf, win, line_map, reopen)
       require('org-super-agenda').cycle_view()
     end, { buffer = buf, silent = true })
   end
+
+  vim.keymap.set('n', cfg.keymaps.undo, function()
+    core.pop_undo()
+    core.refresh(vim.api.nvim_win_get_cursor(0))
+  end, { buffer = buf, silent = true })
+
 
   ------------------------------------------------------------------------
   -- Help ----------------------------------------------------------------
