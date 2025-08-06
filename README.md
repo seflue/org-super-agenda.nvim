@@ -77,6 +77,7 @@ return {
         toggle_other = 'oo',
         filter         = 'of',                          -- live filter by headline (exact)
         filter_fuzzy   = 'oz',                          -- live filter by headline (fuzzy)
+        filter_query      = 'oq',
         reschedule   = 'cs',
         set_deadline = 'cd',
         cycle_todo   = 't',

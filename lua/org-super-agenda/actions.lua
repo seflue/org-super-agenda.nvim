@@ -262,6 +262,14 @@ function A.set_keymaps(buf, win, line_map, reopen)
       { buffer = buf, silent = true, nowait = true })
   end
 
+  if cfg.keymaps.filter_query and cfg.keymaps.filter_query ~= '' then
+    vim.keymap.set('n', cfg.keymaps.filter_query, function()
+      local cur = vim.api.nvim_win_get_cursor(0)
+      local q = vim.fn.input('Query: ')
+      require('org-super-agenda').refresh(cur, { query = q })
+    end, { buffer = buf, silent = true })
+  end
+
   if cfg.keymaps.preview and cfg.keymaps.preview ~= '' then
     vim.keymap.set('n', cfg.keymaps.preview, function()
       preview_headline(line_map)

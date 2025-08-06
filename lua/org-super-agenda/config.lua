@@ -9,8 +9,9 @@ M.defaults = {
   exclude_directories = {},   -- skip *.org under these dirs
   keymaps             = {
     filter_reset      = 'oa', -- reset all filters
-    filter            = 'of',  -- live filter by headline (exact)
-    filter_fuzzy      = 'oz',  -- live filter by headline (fuzzy)
+    filter            = 'of', -- live filter by headline (exact)
+    filter_fuzzy      = 'oz', -- live filter by headline (fuzzy)
+    filter_query      = 'oq',
     toggle_other      = 'oo', -- show/hide the Other group
     reschedule        = 'cs', -- change SCHEDULED date of item under cursor
     set_deadline      = 'cd', -- change DEADLINE date of item under cursor
@@ -121,25 +122,25 @@ M.defaults = {
   ---------------------------------------------------------------------------
   -- misc
   upcoming_days       = 10,
-  hide_empty_groups   = true,   -- set true to drop blank sections
-  keep_order          = false,   -- keep original org‑agenda sort
-  allow_duplicates    = false,   -- show items in every matching group
-  group_format        = '* %s',  -- header text for groups
-  other_group_name    = 'Other', -- title for catchall group
-  show_other_group    = false,   -- disable to remove catchall group
-  show_tags           = true,    -- display headline tags aligned right
-  show_filename       = true,    -- append the source file name to headings
-  heading_max_length  = 70,      -- truncate headings after this many characters
-  persist_hidden      = false,   -- keep hidden items across agenda reopen
+  hide_empty_groups   = true,      -- set true to drop blank sections
+  keep_order          = false,     -- keep original org‑agenda sort
+  allow_duplicates    = false,     -- show items in every matching group
+  group_format        = '* %s',    -- header text for groups
+  other_group_name    = 'Other',   -- title for catchall group
+  show_other_group    = false,     -- disable to remove catchall group
+  show_tags           = true,      -- display headline tags aligned right
+  show_filename       = true,      -- append the source file name to headings
+  heading_max_length  = 70,        -- truncate headings after this many characters
+  persist_hidden      = false,     -- keep hidden items across agenda reopen
   view_mode           = 'classic', -- 'classic' | 'compact'
   classic             = {
-    heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
-    short_date_labels   = false,   -- use 'S'/'D' instead of 'SCHEDULED'/'DEADLINE'
-    inline_dates        = true,    -- show SCHEDULED/DEADLINE info before TODO
+    heading_order     = { 'filename', 'todo', 'headline', 'priority', 'date' },
+    short_date_labels = false,   -- use 'S'/'D' instead of 'SCHEDULED'/'DEADLINE'
+    inline_dates      = true,    -- show SCHEDULED/DEADLINE info before TODO
   },
   compact             = {
-    filename_min_width = 10,        -- pad "alpha:" column at least to this
-    label_min_width    = 12,       -- pad label column ("Sched. 6x:")
+    filename_min_width = 10, -- pad "alpha:" column at least to this
+    label_min_width    = 12, -- pad label column ("Sched. 6x:")
   },
   debug               = false,
 }

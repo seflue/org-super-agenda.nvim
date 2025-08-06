@@ -70,6 +70,7 @@ function U.show_help()
   end
   lines[#lines + 1] = fmt(km.filter, 'Filter by keyword')
   lines[#lines + 1] = fmt(km.filter_fuzzy, 'Filter by keyword (fuzzy)')
+  lines[#lines + 1] = fmt(km.filter_query, 'Filter by query')
 
   if any_filter then lines[#lines + 1] = '' end
 
