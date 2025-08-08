@@ -1,158 +1,98 @@
+-- config/config.lua
 local M = {}
 
 M.defaults = {
-  ---------------------------------------------------------------------------
-  -- where to look for org files
-  org_files           = {},   -- explicit file paths
-  org_directories     = {},   -- recurse for *.org
-  exclude_files       = {},   -- do not load these files
-  exclude_directories = {},   -- skip *.org under these dirs
+  org_files           = {},
+  org_directories     = {},
+  exclude_files       = {},
+  exclude_directories = {},
   keymaps             = {
-    filter_reset      = 'oa', -- reset all filters
-    filter            = 'of', -- live filter by headline (exact)
-    filter_fuzzy      = 'oz', -- live filter by headline (fuzzy)
+    filter_reset      = 'oa',
+    filter            = 'of',
+    filter_fuzzy      = 'oz',
     filter_query      = 'oq',
-    undo              = 'u',  -- undo last action
-    toggle_other      = 'oo', -- show/hide the Other group
-    reschedule        = 'cs', -- change SCHEDULED date of item under cursor
-    set_deadline      = 'cd', -- change DEADLINE date of item under cursor
-    priority_up       = '+',  -- Increase priority by one level (C→B→A)
-    priority_down     = '-',  -- Decrease priority by one level (A→B→C→none)
-    priority_clear    = '0',  -- Remove priority entirely
-    priority_A        = 'A',  -- Set directly to [#A]
-    priority_B        = 'B',  -- Set directly to [#B]
-    priority_C        = 'C',  -- Set directly to [#C]
-    cycle_todo        = 't',  --  cycle TODO keyword
-    reload            = 'r',  -- reload agenda from disk
-    refile            = 'R',  -- refile current headline via Telescope
-    hide_item         = 'x',  -- hide item under cursor
-    preview           = 'K',  -- preview headline under cursor
-    reset_hidden      = 'X',  -- show all hidden items
-    toggle_duplicates = 'D',  -- show items in multiple groups
-    cycle_view        = 'ov', -- switch between classic/compact
+    undo              = 'u',
+    toggle_other      = 'oo',
+    reschedule        = 'cs',
+    set_deadline      = 'cd',
+    priority_up       = '+',
+    priority_down     = '-',
+    priority_clear    = '0',
+    priority_A        = 'A',
+    priority_B        = 'B',
+    priority_C        = 'C',
+    cycle_todo        = 't',
+    reload            = 'r',
+    refile            = 'R',
+    hide_item         = 'x',
+    preview           = 'K',
+    reset_hidden      = 'X',
+    toggle_duplicates = 'D',
+    cycle_view        = 'ov',
   },
 
-  ---------------------------------------------------------------------------
   todo_states         = {
-    {
-      name           = 'TODO',
-      keymap         = 'ot',
-      color          = '#FF5555',
-      strike_through = false,
-      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-    },
-    {
-      name           = 'PROGRESS',
-      keymap         = 'op',
-      color          = '#FFAA00',
-      strike_through = false,
-      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-    },
-    {
-      name           = 'WAITING',
-      keymap         = 'ow',
-      color          = '#BD93F9',
-      strike_through = false,
-      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-    },
-    {
-      name           = 'DONE',
-      keymap         = 'od',
-      color          = '#50FA7B',
-      strike_through = true,
-      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-    },
+    { name='TODO',     keymap='ot', color='#FF5555', strike_through=false, fields={'filename','todo','headline','priority','date','tags'} },
+    { name='PROGRESS', keymap='op', color='#FFAA00', strike_through=false, fields={'filename','todo','headline','priority','date','tags'} },
+    { name='WAITING',  keymap='ow', color='#BD93F9', strike_through=false, fields={'filename','todo','headline','priority','date','tags'} },
+    { name='DONE',     keymap='od', color='#50FA7B', strike_through=true,  fields={'filename','todo','headline','priority','date','tags'} },
   },
 
-  ---------------------------------------------------------------------------
-  -- NOTE: group specification. Order matters!. First matcher wins!
-  groups              = {
-    { name = "📅 Today", matcher = function(i) return i.scheduled and i.scheduled:is_today() end },
-    { name = "🗓️ Tomorrow", matcher = function(i) return i.scheduled and i.scheduled:days_from_today() == 1 end, },
-    -- { name = "⏰ Deadlines", matcher = function(i) return i.deadline ~= nil end },
-    {
-      name = "☠️ Deadlines",
-      matcher = function(i)
-        return i.deadline ~= nil and i.todo_state ~= 'DONE' and
-            not i:has_tag("personal")
-      end,
-    },
-    {
-      name = "⭐ Important",
-      matcher = function(i)
-        return i.priority == "A" and
-            (i.deadline ~= nil or i.scheduled ~= nil)
-      end
-    },
-    {
-      name = '⏳ Overdue',
-      matcher = function(it)
-        return it.todo_state ~= 'DONE' and (
-          (it.deadline and it.deadline:is_past()) or
-          (it.scheduled and it.scheduled:is_past())
+  groups = {
+    { name = "📅 Today",     matcher = function(i) return i.scheduled and i.scheduled:is_today() end },
+    { name = "🗓️ Tomorrow", matcher = function(i) return i.scheduled and i.scheduled:days_from_today() == 1 end },
+    { name = "☠️ Deadlines", matcher = function(i) return i.deadline and i.todo_state ~= 'DONE' and not i:has_tag("personal") end },
+    { name = "⭐ Important",  matcher = function(i) return i.priority == "A" and (i.deadline or i.scheduled) end },
+    { name = "⏳ Overdue",    matcher = function(i)
+        return i.todo_state ~= 'DONE' and (
+          (i.deadline  and i.deadline:is_past()) or
+          (i.scheduled and i.scheduled:is_past())
         )
       end
     },
     { name = "🏠 Personal", matcher = function(item) return item:has_tag("personal") end },
-    { name = "💼 Work", matcher = function(item) return item:has_tag("work") end },
-    {
-      name = "📆 Upcoming",
-      matcher = function(it)
-        local days = require('org-super-agenda.config').get().upcoming_days or 10
-        local deadline_ok = it.deadline and it.deadline:days_from_today() >= 0 and
-            it.deadline:days_from_today() <= days
-        local sched_ok = it.scheduled and it.scheduled:days_from_today() >= 0 and
-            it.scheduled:days_from_today() <= days
-        return deadline_ok or sched_ok
+    { name = "💼 Work",     matcher = function(item) return item:has_tag("work") end },
+    { name = "📆 Upcoming", matcher = function(it)
+        local days = (require('org-super-agenda.config').get().upcoming_days or 10)
+        local d1 = it.deadline  and it.deadline:days_from_today()
+        local d2 = it.scheduled and it.scheduled:days_from_today()
+        local ok1 = d1 and d1 >= 0 and d1 <= days
+        local ok2 = d2 and d2 >= 0 and d2 <= days
+        return ok1 or ok2
       end
     },
   },
 
-  ---------------------------------------------------------------------------
-  -- floating‑window style
   window              = {
     width        = 0.8,
     height       = 0.7,
     border       = 'rounded',
     title        = 'Org Super Agenda',
     title_pos    = 'center',
-    margin_left  = 0, -- increasing this breaks stuff for now, so use with care
-    margin_right = 0, -- increasing this is fine
+    margin_left  = 0,
+    margin_right = 0,
   },
 
-  ---------------------------------------------------------------------------
-  -- misc
   upcoming_days       = 10,
-  hide_empty_groups   = true,      -- set true to drop blank sections
-  keep_order          = false,     -- keep original org‑agenda sort
-  allow_duplicates    = false,     -- show items in every matching group
-  group_format        = '* %s',    -- header text for groups
-  other_group_name    = 'Other',   -- title for catchall group
-  show_other_group    = false,     -- disable to remove catchall group
-  show_tags           = true,      -- display headline tags aligned right
-  show_filename       = true,      -- append the source file name to headings
-  heading_max_length  = 70,        -- truncate headings after this many characters
-  persist_hidden      = false,     -- keep hidden items across agenda reopen
-  view_mode           = 'classic', -- 'classic' | 'compact'
-  classic             = {
-    heading_order     = { 'filename', 'todo', 'headline', 'priority', 'date' },
-    short_date_labels = false, -- use 'S'/'D' instead of 'SCHEDULED'/'DEADLINE'
-    inline_dates      = true,  -- show SCHEDULED/DEADLINE info before TODO
-  },
-  compact             = {
-    filename_min_width = 10, -- pad "alpha:" column at least to this
-    label_min_width    = 12, -- pad label column ("Sched. 6x:")
-  },
+  hide_empty_groups   = true,
+  keep_order          = false,
+  allow_duplicates    = false,
+  group_format        = '* %s',
+  other_group_name    = 'Other',
+  show_other_group    = false,
+  show_tags           = true,
+  show_filename       = true,
+  heading_max_length  = 70,
+  persist_hidden      = false,
+  view_mode           = 'classic',
+  classic             = { heading_order={'filename','todo','priority','headline'}, short_date_labels=false, inline_dates=true },
+  compact             = { filename_min_width=10, label_min_width=12 },
   debug               = false,
 }
 
 local cfg = vim.deepcopy(M.defaults)
-
-function M.setup(user_opts)
-  cfg = vim.tbl_deep_extend('force', cfg, user_opts or {})
-  return cfg
-end
-
+function M.setup(user) cfg = vim.tbl_deep_extend('force', cfg, user or {}); return cfg end
 function M.get() return cfg end
 
 return M
+

@@ -1,5 +1,4 @@
 -- adapters/neovim/source_orgmode.lua -- implements SourcePort
--- Faster: avoid global org:reload() and buffer deletion on every refresh.
 local utils = require('org-super-agenda.adapters.neovim.utils')
 local cfg   = require('org-super-agenda.config').get
 local Date  = require('org-super-agenda.core.date')
@@ -7,7 +6,7 @@ local Item  = require('org-super-agenda.core.item')
 
 local S = {}
 
-local function wanted_paths()
+local function load_org_files()
   local C = cfg()
   local want, skip = {}, {}
   local function add(tbl, k) if k and k ~= '' then tbl[utils.expand(k)] = true end end
@@ -18,11 +17,16 @@ local function wanted_paths()
   for _, d in ipairs(C.exclude_directories or {}) do
     for p in pairs(want) do if p:find('^' .. vim.pesc(utils.expand(d))) then skip[p] = true end end
   end
-  return want, skip
-end
 
-local function load_org_files()
-  local want, skip = wanted_paths()
+  -- remove unchanged, unmodified buffers to force reload
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    if want[name] and not skip[name]
+       and vim.api.nvim_buf_is_loaded(bufnr)
+       and not vim.api.nvim_buf_get_option(bufnr, 'modified') then
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end
+  end
 
   local ok_api, api_root = pcall(require, 'orgmode.api'); if not ok_api then return {} end
   local org_api = api_root.load and api_root or api_root.org
@@ -38,10 +42,7 @@ local function load_org_files()
       end
     end
   end
-  -- No global org:reload(); per-file :reload() is cheap and keeps cache fresh.
-  for i,f in ipairs(files) do
-    if type(f.reload) == 'function' then files[i] = f:reload() end
-  end
+  for i,f in ipairs(files) do files[i] = f:reload() end
   return files
 end
 
@@ -79,7 +80,7 @@ function S.collect()
     if not seen[key] then seen[key]=true; uniq[#uniq+1]=it end
   end
 
-  -- keep all configured TODO states (including DONE)
+  -- drop unknown TODO states
   local valid = {}
   for _, st in ipairs(cfg().todo_states or {}) do valid[st.name] = true end
   local out = {}

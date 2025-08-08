@@ -1,19 +1,17 @@
+-- adapters/neovim/refile_telescope.lua
+-- Implements a refile flow using telescope + org-telescope
 local M = {}
 
--- borrow helpers (self-contained, trimmed for our use)
+-- helpers (file text ops)
 local function heading_range(lines, pos)
   local start = pos
-  while start > 0 and not lines[start]:match("^%*+") do
-    start = start - 1
-  end
+  while start > 0 and not lines[start]:match("^%*+") do start = start - 1 end
   if start == 0 then return nil end
   local lvl = #(lines[start]:match("^(%*+)"))
   local stop = #lines
   for i = start + 1, #lines do
     local s = lines[i]:match("^(%*+)")
-    if s and #s <= lvl then
-      stop = i - 1; break
-    end
+    if s and #s <= lvl then stop = i - 1; break end
   end
   return start, stop, lvl
 end
@@ -23,11 +21,8 @@ local function adjust_levels(seg, diff)
   local res = {}
   for _, l in ipairs(seg) do
     local stars, rest = l:match("^(%*+)(.*)")
-    if stars then
-      table.insert(res, string.rep("*", #stars + diff) .. rest)
-    else
-      table.insert(res, l)
-    end
+    if stars then res[#res+1] = string.rep("*", #stars + diff) .. rest
+    else res[#res+1] = l end
   end
   return res
 end
@@ -35,7 +30,7 @@ end
 local function reload_if_open(path)
   for _, b in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_get_name(b) == path
-        and not vim.api.nvim_buf_get_option(b, "modified") then
+       and not vim.api.nvim_buf_get_option(b, "modified") then
       vim.api.nvim_buf_call(b, function() vim.cmd("edit!") end)
       break
     end
@@ -51,17 +46,14 @@ local function move_segment(src, s_line, e_line, target_file, insert_pos, diff)
   local tlines = vim.fn.readfile(target_file)
   segment      = adjust_levels(segment, diff)
   insert_pos   = insert_pos or (#tlines + 1)
-  for i, l in ipairs(segment) do
-    table.insert(tlines, insert_pos + i - 1, l)
-  end
+  for i, l in ipairs(segment) do table.insert(tlines, insert_pos + i - 1, l) end
   vim.fn.writefile(tlines, target_file)
 
-  reload_if_open(src)
-  reload_if_open(target_file)
+  reload_if_open(src); reload_if_open(target_file)
 end
 
--- Build Telescope pickers using org-telescope scanner for target options
-local function open_picker(params)
+-- UI: telescope picker
+local function open_picker(params, on_done)
   local ok_ts, telescope_pickers = pcall(require, "telescope.pickers")
   local ok_sc, scanner           = pcall(require, "org-telescope.scanner")
   if not ok_ts or not ok_sc then
@@ -72,24 +64,24 @@ local function open_picker(params)
   if customPickers and customPickers.highlight_groups then customPickers.highlight_groups() end
 
   local finders, conf, actions, action_state =
-      require("telescope.finders"),
-      require("telescope.config").values,
-      require("telescope.actions"),
-      require("telescope.actions.state")
+    require("telescope.finders"),
+    require("telescope.config").values,
+    require("telescope.actions"),
+    require("telescope.actions.state")
 
   local all_headlines = scanner.scan() -- { file, line, level, text, ... }
 
   local files_set = {}
   for _, h in ipairs(all_headlines) do files_set[h.file] = true end
   local files = {}
-  for f, _ in pairs(files_set) do table.insert(files, f) end
+  for f, _ in pairs(files_set) do files[#files+1] = f end
   table.sort(files)
 
   local function make_file_entries()
     local tbl = {}
     for i, f in ipairs(files) do
       tbl[i] = {
-        value = { file = f, line = 1, level = 0 },
+        value   = { file = f, line = 1, level = 0 },
         display = vim.fn.fnamemodify(f, ":t"),
         ordinal = f,
       }
@@ -112,14 +104,11 @@ local function open_picker(params)
 
   local mode = "file"
   local function build_picker(entries, title)
-    return telescope_pickers.new({
+    return telescope_pickers.new({}, {
       prompt_title = title,
-    }, {
       finder = finders.new_table {
         results = entries,
-        entry_maker = function(e)
-          return { value = e.value, display = e.display, ordinal = e.ordinal }
-        end,
+        entry_maker = function(e) return { value = e.value, display = e.display, ordinal = e.ordinal } end,
       },
       sorter = conf.generic_sorter({}),
       previewer = (customPickers and customPickers.custom_previewer and customPickers.custom_previewer()) or nil,
@@ -129,7 +118,7 @@ local function open_picker(params)
           mode = (mode == "file") and "heading" or "file"
           local p = (mode == "file")
               and build_picker(make_file_entries(), "Select Target File")
-              or build_picker(make_headline_entries(), "Select Target Heading")
+              or  build_picker(make_headline_entries(), "Select Target Heading")
           p:find()
         end
         map("i", "<C-Space>", toggle); map("n", "<C-Space>", toggle)
@@ -147,9 +136,7 @@ local function open_picker(params)
             local diff        = (sel.value.level + 1) - params.src_level
             move_segment(params.src_file, params.s, params.e, sel.value.file, insert_line, diff)
           end
-          -- refresh agenda view afterwards
-          local ok_ag, osa = pcall(require, "org-super-agenda")
-          if ok_ag then osa.refresh(vim.api.nvim_win_get_cursor(0)) end
+          if on_done then on_done() end
         end)
         return true
       end,
@@ -160,17 +147,12 @@ local function open_picker(params)
   picker:find()
 end
 
--- public: start a refile for known src info (file + start/end + level)
-function M.start_refile(src_file, start_line, end_line, src_level)
-  if not (src_file and start_line and end_line and src_level) then
+function M.start(params, on_done)
+  if not (params and params.src_file and params.s and params.e and params.src_level) then
     return vim.notify("Invalid refile request (missing positions).", vim.log.levels.ERROR)
   end
-  open_picker({
-    src_file  = src_file,
-    s         = start_line,
-    e         = end_line,
-    src_level = src_level,
-  })
+  open_picker(params, on_done)
 end
 
 return M
+
