@@ -11,6 +11,11 @@ end
 
 function V.line_map() return V._line_map end
 
+local function add_hl(buf, row, col_start, col_end, entry)
+  local group = entry[4] or hi.group(entry.state)
+  vim.api.nvim_buf_add_highlight(buf, V._ns, group, row, col_start, col_end)
+end
+
 local function draw_into(buf, win, producer, cursor)
   hi.ensure()
   local cfg = get_cfg()
@@ -36,8 +41,7 @@ local function draw_into(buf, win, producer, cursor)
 
   vim.api.nvim_buf_clear_namespace(buf, V._ns, 0, -1)
   for _, h in ipairs(hls) do
-    -- field visibility is decided in highlight module
-    vim.api.nvim_buf_add_highlight(buf, V._ns, h[4], h[1], left + h[2], h[3] == -1 and -1 or left + h[3])
+    add_hl(buf, h[1], left + h[2], h[3] == -1 and -1 or left + h[3], h)
   end
 
   if cursor then
@@ -67,7 +71,7 @@ function V.render(producer, cursor, _mode)
   vim.api.nvim_buf_set_name(buf, cfg.window.title)
 
   for _, h in ipairs(hls) do
-    vim.api.nvim_buf_add_highlight(buf, V._ns, h[4], h[1], left + h[2], h[3] == -1 and -1 or left + h[3])
+    add_hl(buf, h[1], left + h[2], h[3] == -1 and -1 or left + h[3], h)
   end
 
   local h = math.floor(ui.height * cfg.window.height)

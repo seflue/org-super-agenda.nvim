@@ -10,8 +10,25 @@ local function key_for_hl(hl)
   return string.format('%s:%s', hl.file.filename or '', hl.position and hl.position.start_line or 0)
 end
 
--- === helpers ===
-local function snapshot_headline(hl)
+-- === helpers: swap detection, buffer status, snapshots, safe writes ===
+local function has_swap_for(path)
+  -- Heuristic: look for .*{basename}*.sw?
+  local dir = vim.fn.fnamemodify(path, ":p:h")
+  local base = vim.fn.fnamemodify(path, ":t")
+  local patt = dir .. "/.*" .. vim.fn.escape(base, "[]^$\\.*") .. ".*.sw?"
+  return vim.fn.glob(patt) ~= ""
+end
+
+local function buf_status_for(path)
+  local bufnr = vim.fn.bufnr(path)
+  if bufnr == -1 then return { bufnr = -1, loaded = false, modified = false } end
+  local loaded = vim.api.nvim_buf_is_loaded(bufnr)
+  local modified = loaded and vim.api.nvim_buf_get_option(bufnr, 'modified') or false
+  return { bufnr = bufnr, loaded = loaded, modified = modified }
+end
+
+-- Snapshot/restore utilities
+local function snapshot_heading_from_buf(hl)
   local bufnr = vim.fn.bufnr(hl.file.filename)
   if bufnr == -1 then bufnr = vim.fn.bufadd(hl.file.filename) end
   if not vim.api.nvim_buf_is_loaded(bufnr) then vim.fn.bufload(bufnr) end
@@ -24,16 +41,116 @@ local function snapshot_headline(hl)
     local s = lines[i]:match("^(%*+)")
     if s and #s <= lvl then stop = i - 1; break end
   end
-  return { bufnr = bufnr, start = start, stop = stop, seg = vim.list_slice(lines, start, stop) }
+  return {
+    bufnr = bufnr, start = start, stop = stop,
+    seg = vim.list_slice(lines, start, stop),
+    mode = 'buffer',
+  }
 end
 
-local function make_restore(snap)
-  return function()
-    vim.api.nvim_buf_set_lines(snap.bufnr, snap.start - 1, snap.stop, false, snap.seg)
-    vim.api.nvim_buf_call(snap.bufnr, function() vim.cmd('silent noautocmd write') end)
+local function heading_range_in_file(all_lines, pos_start)
+  local start = pos_start
+  while start > 0 and not all_lines[start]:match("^%*+") do start = start - 1 end
+  if start == 0 then return nil end
+  local lvl = #(all_lines[start]:match("^(%*+)"))
+  local stop = #all_lines
+  for i = start + 1, #all_lines do
+    local s = all_lines[i]:match("^(%*+)")
+    if s and #s <= lvl then stop = i - 1; break end
+  end
+  return start, stop
+end
+
+local function snapshot_heading_from_disk(path, pos_start)
+  local lines = vim.fn.readfile(path)
+  local s, e = heading_range_in_file(lines, pos_start)
+  if not s then
+    -- fallback: single-line snapshot only
+    s, e = pos_start, pos_start
+  end
+  return {
+    path = path, start = s, stop = e,
+    seg = vim.list_slice(lines, s, e),
+    mode = 'file',
+  }
+end
+
+local function make_restore_from_snapshot(snap)
+  if snap.mode == 'buffer' then
+    return function()
+      vim.api.nvim_buf_set_lines(snap.bufnr, snap.start - 1, snap.stop, false, snap.seg)
+      vim.api.nvim_buf_call(snap.bufnr, function() vim.cmd('silent noautocmd write') end)
+    end
+  else
+    return function()
+      local before = vim.fn.readfile(snap.path)
+      -- splice original segment back
+      local out = {}
+      for i = 1, snap.start - 1 do out[#out+1] = before[i] end
+      for _, l in ipairs(snap.seg) do out[#out+1] = l end
+      for i = snap.stop + 1, #before do out[#out+1] = before[i] end
+      vim.fn.writefile(out, snap.path)
+    end
   end
 end
 
+local function compute_cycled_line(line, next_state)
+  -- Accept either "* TODO foo" or "* foo"
+  local stars, cur_state, rest = line:match('^(%*+)%s+([A-Z]+)%s+(.*)$')
+  if not stars then
+    stars, rest = line:match('^(%*+)%s+(.*)$')
+  end
+  if not stars then return nil end
+  if next_state == '' then
+    return (stars .. ' ' .. rest)
+  else
+    return (stars .. ' ' .. next_state .. ' ' .. rest)
+  end
+end
+
+local function safe_set_heading_state(hl, next_state)
+  local path = hl.file.filename
+  local lnum = (hl.position and hl.position.start_line or 1)
+  if lnum < 1 then return false, "Invalid headline position" end
+
+  local st = buf_status_for(path)
+
+  -- If buffer is loaded here and modified, refuse.
+  if st.loaded and st.modified then
+    return false, "File is open and modified in this Neovim; aborting to avoid data loss."
+  end
+
+  -- If not loaded and a swap exists, very likely open elsewhere: refuse.
+  if (not st.loaded) and has_swap_for(path) then
+    return false, "Detected a swap file for this path (likely open in another Vim). Refusing to edit."
+  end
+
+  -- Build new line content
+  local new_line
+
+  if st.loaded then
+    -- buffer path (unmodified)
+    local old = vim.api.nvim_buf_get_lines(st.bufnr, lnum - 1, lnum, false)[1]
+    if not old then return false, "Could not read current line" end
+    new_line = compute_cycled_line(old, next_state)
+    if not new_line then return false, "Not a valid org headline line" end
+    vim.api.nvim_buf_set_lines(st.bufnr, lnum - 1, lnum, false, { new_line })
+    vim.api.nvim_buf_call(st.bufnr, function() vim.cmd('silent noautocmd write') end)
+    return true
+  else
+    -- on-disk edit
+    local lines = vim.fn.readfile(path)
+    local old = lines[lnum]
+    if not old then return false, "Could not read current line on disk" end
+    new_line = compute_cycled_line(old, next_state)
+    if not new_line then return false, "Not a valid org headline line" end
+    lines[lnum] = new_line
+    vim.fn.writefile(lines, path)
+    return true
+  end
+end
+
+-- === headline toolbelt ===
 local function with_headline(line_map, cb)
   local cur = vim.api.nvim_win_get_cursor(0)
   local it  = line_map[cur[1]]
@@ -78,9 +195,8 @@ local function preview_headline(line_map)
   end)
 end
 
-local function apply_with_undo(cur, hl, op_fn)
-  local snap = snapshot_headline(hl)
-  Store.push_undo(make_restore(snap))
+local function apply_with_undo_snapshot(cur, snap, op_fn)
+  Store.push_undo(make_restore_from_snapshot(snap))
   local p = op_fn()
   vim.defer_fn(function()
     if p and type(p.next) == 'function' then p:next(function() Services.agenda.refresh(cur) end)
@@ -119,21 +235,25 @@ function A.set_keymaps(buf, win, line_map, reopen)
     end)
   end, { buffer = buf, silent = true })
 
-  -- reschedule / deadline
+  -- reschedule / deadline (unchanged but undo-aware)
   vim.keymap.set('n', cfg.keymaps.reschedule, function()
     with_headline(line_map, function(cur, hl)
-      local snap = snapshot_headline(hl)
+      local st = buf_status_for(hl.file.filename)
+      local snap = st.loaded and snapshot_heading_from_buf(hl)
+                   or snapshot_heading_from_disk(hl.file.filename, hl.position.start_line)
       local p = hl:set_scheduled()
-      local function after() Store.push_undo(make_restore(snap)); Services.agenda.refresh(cur) end
+      local function after() Store.push_undo(make_restore_from_snapshot(snap)); Services.agenda.refresh(cur) end
       if p and type(p.next) == 'function' then p:next(after) else after() end
     end)
   end, { buffer = buf, silent = true })
 
   vim.keymap.set('n', cfg.keymaps.set_deadline, function()
     with_headline(line_map, function(cur, hl)
-      local snap = snapshot_headline(hl)
+      local st = buf_status_for(hl.file.filename)
+      local snap = st.loaded and snapshot_heading_from_buf(hl)
+                   or snapshot_heading_from_disk(hl.file.filename, hl.position.start_line)
       local p = hl:set_deadline()
-      local function after() Store.push_undo(make_restore(snap)); Services.agenda.refresh(cur) end
+      local function after() Store.push_undo(make_restore_from_snapshot(snap)); Services.agenda.refresh(cur) end
       if p and type(p.next) == 'function' then p:next(after) else after() end
     end)
   end, { buffer = buf, silent = true })
@@ -148,7 +268,7 @@ function A.set_keymaps(buf, win, line_map, reopen)
     end, { buffer = buf, silent = true })
   end
 
-  -- ✅ toggle duplicates (this was missing)
+  -- ✅ toggle duplicates
   if cfg.keymaps.toggle_duplicates and cfg.keymaps.toggle_duplicates ~= '' then
     vim.keymap.set('n', cfg.keymaps.toggle_duplicates, function()
       Services.agenda.toggle_duplicates()
@@ -159,7 +279,15 @@ function A.set_keymaps(buf, win, line_map, reopen)
   local function make_set_priority(prio)
     return function()
       with_headline(line_map, function(cur, hl)
-        apply_with_undo(cur, hl, function() return hl:set_priority(prio) end)
+        local st = buf_status_for(hl.file.filename)
+        local snap = st.loaded and snapshot_heading_from_buf(hl)
+                     or snapshot_heading_from_disk(hl.file.filename, hl.position.start_line)
+        Store.push_undo(make_restore_from_snapshot(snap))
+        local p = hl:set_priority(prio)
+        vim.defer_fn(function()
+          if p and type(p.next) == 'function' then p:next(function() Services.agenda.refresh(cur) end)
+          else Services.agenda.refresh(cur) end
+        end, 10)
       end)
     end
   end
@@ -170,13 +298,29 @@ function A.set_keymaps(buf, win, line_map, reopen)
 
   vim.keymap.set('n', cfg.keymaps.priority_up, function()
     with_headline(line_map, function(cur, hl)
-      apply_with_undo(cur, hl, function() return hl:priority_up() end)
+      local st = buf_status_for(hl.file.filename)
+      local snap = st.loaded and snapshot_heading_from_buf(hl)
+                   or snapshot_heading_from_disk(hl.file.filename, hl.position.start_line)
+      Store.push_undo(make_restore_from_snapshot(snap))
+      local p = hl:priority_up()
+      vim.defer_fn(function()
+        if p and type(p.next) == 'function' then p:next(function() Services.agenda.refresh(cur) end)
+        else Services.agenda.refresh(cur) end
+      end, 10)
     end)
   end, { buffer = buf, silent = true })
 
   vim.keymap.set('n', cfg.keymaps.priority_down, function()
     with_headline(line_map, function(cur, hl)
-      apply_with_undo(cur, hl, function() return hl:priority_down() end)
+      local st = buf_status_for(hl.file.filename)
+      local snap = st.loaded and snapshot_heading_from_buf(hl)
+                   or snapshot_heading_from_disk(hl.file.filename, hl.position.start_line)
+      Store.push_undo(make_restore_from_snapshot(snap))
+      local p = hl:priority_down()
+      vim.defer_fn(function()
+        if p and type(p.next) == 'function' then p:next(function() Services.agenda.refresh(cur) end)
+        else Services.agenda.refresh(cur) end
+      end, 10)
     end)
   end, { buffer = buf, silent = true })
 
@@ -197,7 +341,7 @@ function A.set_keymaps(buf, win, line_map, reopen)
     end, { buffer = buf, silent = true })
   end
 
-  -- live filter (exact/fuzzy)
+  -- live filters
   local function live_filter(fuzzy)
     local cur, query = vim.api.nvim_win_get_cursor(0), ''
     local function apply()
@@ -246,7 +390,7 @@ function A.set_keymaps(buf, win, line_map, reopen)
     end, { buffer = buf, silent = true })
   end
 
-  -- cycle todo (manage sticky DONE visibility)
+  -- cycle todo (safe across sessions + undoable)
   vim.keymap.set('n', cfg.keymaps.cycle_todo, function()
     with_headline(line_map, function(cur, hl)
       local seq = {}
@@ -255,20 +399,18 @@ function A.set_keymaps(buf, win, line_map, reopen)
       local idx = 0
       for i, v in ipairs(seq) do if v == (hl.todo_value or '') then idx = i; break end end
       local next_state = seq[idx % #seq + 1]
-      local bufnr, created = vim.fn.bufnr(hl.file.filename), false
-      if bufnr == -1 then bufnr = vim.fn.bufadd(hl.file.filename); created = true end
-      if not vim.api.nvim_buf_is_loaded(bufnr) then vim.fn.bufload(bufnr) end
-      local lnum = (hl.position and hl.position.start_line or 1) - 1; if lnum < 0 then return end
-      local line = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1]; if not line then return end
 
-      local stars, _, rest = line:match('^(%*+)%s+([A-Z]+)%s+(.*)$')
-      if not stars then stars, rest = line:match('^(%*+)%s+(.*)$') end
-      if not stars then return end
+      -- Take snapshot without forcing buffer load if possible
+      local st = buf_status_for(hl.file.filename)
+      local snap = st.loaded and snapshot_heading_from_buf(hl)
+                   or snapshot_heading_from_disk(hl.file.filename, hl.position.start_line)
+      Store.push_undo(make_restore_from_snapshot(snap))
 
-      local new_line = (next_state == '') and (stars .. ' ' .. rest) or (stars .. ' ' .. next_state .. ' ' .. rest)
-      vim.api.nvim_buf_set_lines(bufnr, lnum, lnum + 1, false, { new_line })
-      vim.api.nvim_buf_call(bufnr, function() vim.cmd('silent noautocmd write') end)
-      if created and vim.fn.bufwinnr(bufnr) == -1 then vim.api.nvim_buf_delete(bufnr, { force = true }) end
+      local ok, err = safe_set_heading_state(hl, next_state)
+      if not ok then
+        vim.notify(err, vim.log.levels.WARN)
+        return
+      end
 
       local key = key_for_hl(hl)
       if next_state == 'DONE' then Store.sticky_add(key) else Store.sticky_remove(key) end
@@ -282,7 +424,7 @@ function A.set_keymaps(buf, win, line_map, reopen)
     Services.agenda.refresh(cur)
   end, { buffer = buf, silent = true })
 
-  -- refile
+  -- refile (unchanged)
   if cfg.keymaps.refile and cfg.keymaps.refile ~= '' then
     vim.keymap.set('n', cfg.keymaps.refile, function()
       with_headline(line_map, function(_, hl)

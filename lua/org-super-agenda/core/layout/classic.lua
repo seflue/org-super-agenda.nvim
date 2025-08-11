@@ -61,7 +61,7 @@ function L.build(groups, win_width, cfg)
           if #text > 0 and text:sub(-1) ~= ' ' then text, col = text .. ' ', col + 1 end
           local s = col
           text, col = text .. txt, col + #txt
-          spans[#spans + 1] = { field = field, s = s, e = col }
+          spans[#spans + 1] = { field = field, s = s, e = col, state = it.todo_state }
         end
 
         if parts.filename and order[1] == 'filename' then
@@ -73,28 +73,26 @@ function L.build(groups, win_width, cfg)
           if #text < widest then text, col = text .. string.rep(' ', widest - #text), widest else text, col = text .. ' ', col + 1 end
           local ms = col
           text, col = text .. meta_str, col + #meta_str
-          spans[#spans + 1] = { field = 'date', s = ms, e = col }
+          spans[#spans + 1] = { field = 'date', s = ms, e = col, state = it.todo_state }
         end
 
         if cfg.show_tags and it.tags and #it.tags > 0 then
           local tag   = ':' .. table.concat(it.tags, ':') .. ':'
           local start = win_width - #tag - 1
           if #text + 1 < start then text = text .. string.rep(' ', start - #text) .. tag else text = text .. ' ' .. tag end
-          spans[#spans + 1] = { field = 'tags', s = #text - #tag, e = #text }
+          spans[#spans + 1] = { field = 'tags', s = #text - #tag, e = #text, state = it.todo_state }
         end
 
         local lnum = emit(text)
         line_map[lnum] = it
 
-        local hl_group = 'OrgSA_' .. (it.todo_state or 'TODO')
         for _, sp in ipairs(spans) do
-          -- highlights applied in adapter after hi.ensure() decides visibility
-          hls[#hls + 1] = { lnum - 1, sp.s, sp.e, hl_group, field = sp.field, state = it.todo_state }
+          hls[#hls + 1] = { lnum - 1, sp.s, sp.e, nil, field = sp.field, state = sp.state }
         end
 
         if not cfg.classic.inline_dates and meta_str ~= '' then
           local mln = emit(indent .. '  ' .. meta_str)
-          hls[#hls + 1] = { mln - 1, #indent + 2, -1, 'OrgSA_' .. (it.todo_state or 'TODO'), field='date', state=it.todo_state }
+          hls[#hls + 1] = { mln - 1, #indent + 2, -1, nil, field='date', state=it.todo_state }
         end
       end
     end

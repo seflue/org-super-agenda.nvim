@@ -47,7 +47,7 @@ function L.build(groups, win_width, cfg)
       hls[#hls + 1] = { hdln - 1, 0, -1, 'OrgSA_Group' }
 
       for _, it in ipairs(grp.items) do
-        local name  = (((it.file or ''):match('[^/]+$') or ''):gsub('%.org$', '') .. ':')
+        local name = (((it.file or ''):match('[^/]+$') or ''):gsub('%.org$', '') .. ':')
         local label = build_labels(it)
         if label == '' then label = string.rep(' ', label_w) else label = string.format('%-' .. label_w .. 's', label) end
         local pri   = (it.priority and it.priority ~= '') and ('[#' .. it.priority .. ']') or nil
@@ -55,25 +55,24 @@ function L.build(groups, win_width, cfg)
         local head  = truncate(it.headline or '', cfg.heading_max_length)
 
         local text, spans = '', {}
-        local s_fn  = #text; text = text .. string.format('%-' .. fname_w .. 's', name); spans[#spans+1] = {field='filename', s=s_fn, e=#text}
-        local s_lab = #text; text = text .. label; spans[#spans+1] = {field='date', s=s_lab, e=#text}
+        local s_fn  = #text; text = text .. string.format('%-' .. fname_w .. 's', name); spans[#spans+1] = {field='filename', s=s_fn, e=#text, state=it.todo_state}
+        local s_lab = #text; text = text .. label; spans[#spans+1] = {field='date', s=s_lab, e=#text, state=it.todo_state}
         text = text .. ' '
-        local s_todo = #text; text = text .. todo; spans[#spans+1] = {field='todo', s=s_todo, e=#text}
-        if pri then text = text .. ' '; local s_pr = #text; text = text .. pri; spans[#spans+1] = {field='priority', s=s_pr, e=#text} end
+        local s_todo = #text; text = text .. todo; spans[#spans+1] = {field='todo', s=s_todo, e=#text, state=it.todo_state}
+        if pri then text = text .. ' '; local s_pr = #text; text = text .. pri; spans[#spans+1] = {field='priority', s=s_pr, e=#text, state=it.todo_state} end
         text = text .. ' '
-        local s_head = #text; text = text .. head; spans[#spans+1] = {field='headline', s=s_head, e=#text}
+        local s_head = #text; text = text .. head; spans[#spans+1] = {field='headline', s=s_head, e=#text, state=it.todo_state}
 
         if cfg.show_tags and it.tags and #it.tags > 0 then
           local tag = ':' .. table.concat(it.tags, ':') .. ':'
           local start = win_width - #tag - 1
           if #text + 1 < start then text = text .. string.rep(' ', start - #text) .. tag else text = text .. ' ' .. tag end
-          spans[#spans + 1] = { field = 'tags', s = #text - #tag, e = #text }
+          spans[#spans + 1] = { field = 'tags', s = #text - #tag, e = #text, state=it.todo_state }
         end
 
         local lnum = emit(text); line_map[lnum] = it
-        local hl_group = 'OrgSA_' .. (it.todo_state or 'TODO')
         for _, sp in ipairs(spans) do
-          hls[#hls + 1] = { lnum - 1, sp.s, sp.e, hl_group, field=sp.field, state=it.todo_state }
+          hls[#hls + 1] = { lnum - 1, sp.s, sp.e, nil, field=sp.field, state=it.todo_state }
         end
       end
     end

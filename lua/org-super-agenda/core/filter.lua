@@ -48,11 +48,20 @@ function F.apply(items, opts, cfg)
     end
   end
 
-  -- only valid TODO states (from cfg)
+  -- include:
+  --   - valid TODO states from cfg
+  --   - OR items with NO TODO but with a date (scheduled or deadline) => events
   local valid = {}
   for _, st in ipairs(cfg.todo_states or {}) do valid[st.name] = true end
   local t = {}
-  for _, it in ipairs(out) do if valid[it.todo_state] then t[#t+1] = it end end
+  for _, it in ipairs(out) do
+    local state = it.todo_state
+    if valid[state] then
+      t[#t+1] = it
+    elseif (state == nil or state == '') and (it.scheduled or it.deadline) then
+      t[#t+1] = it
+    end
+  end
   return t
 end
 
