@@ -13,23 +13,33 @@ function Services.setup(deps)
 end
 
 local function render(cursor, opts, reuse)
+  local view_opts = {}
   if opts then
+    -- move non-view opts into state, keep view-only opts aside
+    view_opts.fullscreen = opts.fullscreen
+
     local s = store.get()
     if opts.todo_filter == nil then s.opts.todo_filter = nil end
     if opts.headline_filter == nil then s.opts.headline_filter = nil end
     if opts.headline_fuzzy == nil then s.opts.headline_fuzzy = nil end
     if opts.query == nil then s.opts.query = nil end
-    store.set_opts(vim.tbl_deep_extend('force', s.opts or {}, opts))
+    local state_opts = vim.tbl_deep_extend('force', s.opts or {}, {
+      todo_filter     = opts.todo_filter,
+      headline_filter = opts.headline_filter,
+      headline_fuzzy  = opts.headline_fuzzy,
+      query           = opts.query,
+    })
+    store.set_opts(state_opts)
   end
   if cursor then store.set_cursor(cursor) end
 
   local s = store.get()
   local producer = pipeline.run(source, cfg(), s)
-  if reuse and view.is_open() then view.update(producer, s.cursor, s.view_mode)
-  else view.render(producer, s.cursor, s.view_mode) end
+  if reuse and view.is_open() then view.update(producer, s.cursor, s.view_mode, view_opts)
+  else view.render(producer, s.cursor, s.view_mode, view_opts) end
 end
 
-function Services.agenda.open() store.set_cursor(nil); render(nil, {}, false) end
+function Services.agenda.open(opts) store.set_cursor(nil); render(nil, opts or {}, false) end
 function Services.agenda.refresh(cursor, opts) render(cursor, opts, true) end
 function Services.agenda.on_close()
   if not cfg().persist_hidden then store.reset_hidden() end

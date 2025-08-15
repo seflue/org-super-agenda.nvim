@@ -3,203 +3,328 @@
 org-super-agenda                                              *org-super-agenda*
 
 This plugin organizes your orgmode agenda in a floating window using
-custom groups.  It is inspired by the Emacs plugin org-super-agenda.
+custom groups. It is inspired by the Emacs plugin org-super-agenda.
 
 ===============================================================================
 USAGE                                                           *org-super-agenda-usage*
 
-    :OrgSuperAgenda
-        Opens the agenda window.  Use <CR> on a headline to jump to the
-        source location.  Use `q` or <Esc> to close the window.
-        Press the keymap defined for a TODO state to filter by it and
-        `oa` to reset the filter.  Use `cs` to reschedule, `cd` to set
-        a deadline, `t` to cycle TODO state and `r` to refresh the
-        agenda from disk.  Press `K` to preview the current
-        headline and `q` to close the preview.
+```
+:OrgSuperAgenda
+    Opens the agenda window (floating). Use <CR> on a headline to jump to
+    the source location. Use `q` or <Esc> to close the window.
+
+:OrgSuperAgenda!  or  :OrgSuperAgenda fullscreen
+    Opens the agenda **fullscreen**. Border style is configurable via
+    |org-super-agenda-options| (`window.fullscreen_border`).
+```
+
+Navigation & actions \~
+Press the keymap defined for a TODO state to filter by it and
+`oa` to reset the filter. Use `cs` to reschedule, `cd` to set a
+deadline, `t` to cycle TODO state and `r` to refresh the agenda
+from disk. Press `K` to preview the current headline and `q` to
+close the preview.
+
+```
+    Additional useful keys:
+        of / oz   Live filters (exact / fuzzy)
+        oq        Advanced query prompt (see |org-super-agenda-query|)
+        D         Toggle allowing duplicates across groups
+        ov        Switch view mode (classic ↔ compact)
+        x / X     Hide current item / reset hidden list
+        R         Refile via Telescope (see |org-super-agenda-refile|)
+```
 
 ===============================================================================
 CONFIGURATION                                                   *org-super-agenda-setup*
 
 Call |lua| to setup the plugin:
+
 >
-    lua << EOF
-    require('org-super-agenda').setup({
-      org_directories     = {},        -- recurse for *.org files
-      exclude_files       = {},        -- files to ignore
-      exclude_directories = {},        -- directories to ignore
-      -- additional options are documented in the source
-    })
-    EOF
+
+```
+lua << EOF
+```
+
+```
+require('org-super-agenda').setup({
+  org_directories     = {},        -- recurse for *.org files
+  exclude_files       = {},        -- files to ignore
+  exclude_directories = {},        -- directories to ignore
+  -- additional options are documented below and in the source
+})
+EOF
+```
+
 <
 
-The `groups` option controls how headlines are grouped.  By default
-items are grouped into "Today", "Important", "Overdue", "Upcoming" and
-"Deadlines" sections.
+The `groups` option controls how headlines are grouped. By default items are
+grouped into "Today", "Important", "Overdue", "Upcoming" and "Deadlines"
+sections. You can define your own groups using Lua functions.
 
-You can define your own custom groups using Lua functions. For example:
+Example groups \~
+
 >
-    groups = {
-      {
-        name = "🔥 Urgent Work",
-        matcher = function(item)
-          return item:has_tag("work") and item.priority == "A"
-        end,
-      },
-      {
-        name = "🧪 Experimental",
-        matcher = function(item)
-          return item.headline:match("Proof of Concept") or item:has_tag("test")
-        end,
-      },
-    }
+
+```
+groups = {
+```
+
+```
+  {
+    name = "🔥 Urgent Work",
+    matcher = function(item)
+      return item:has_tag("work") and item.priority == "A"
+    end,
+  },
+  {
+    name = "🧪 Experimental",
+    matcher = function(item)
+      return item.headline:match("Proof of Concept") or item:has_tag("test")
+    end,
+  },
+}
+```
+
 <
 
 Matchers have access to:
-- `item.todo_state`, `item.headline`, `item.priority`
-- `item:has_tag("...")`
-- `item.scheduled`, `item.deadline` with methods like `:is_today()` or `:days_from_today()`
 
-Groups are checked in order — the first match wins unless |allow_duplicates| is
-set.
+* `item.todo_state`, `item.headline`, `item.priority`
+* `item:has_tag("...")`
+* `item.scheduled`, `item.deadline` with methods like `:is_today()` and
+  `:days_from_today()`
+
+Groups are checked in order — the **first match wins** unless
+|allow\_duplicates| is set.
+
+===============================================================================
+SORTING                                                      *org-super-agenda-sorting*
+
+Items within each section can be sorted.
+
+Global fallback \~
+
+>
+
+```
+group_sort = { by = 'date_nearest', order = 'asc' }
+```
+
+<
+
+Per-group override \~
+
+>
+
+```
+{ name = '☠️ Deadlines', matcher = is_deadline,
+```
+
+```
+  sort = { by = 'deadline', order = 'asc' } }
+```
+
+<
+
+Supported sort keys \~
+date\_nearest   min(days-to-deadline, days-to-scheduled); missing → ∞
+deadline       days from today (negative = past)
+scheduled      days from today (negative = past)
+priority       A > B > C
+todo           order of your `todo_states`
+filename       basename (ascending)
+headline       case-insensitive title
+
+Tie-breakers: priority desc, then filename asc, then headline asc.
+
+===============================================================================
+FILTERS & QUERY                                               *org-super-agenda-query*
+
+Quick filters \~
+of            Live filter by exact text (type to narrow, <Esc>/<CR> to stop)
+oz            Live filter by fuzzy text
+oa            Reset filters
+ot/op/ow/od   Show only TODO/PROGRESS/WAITING/DONE (configurable)
+
+Advanced query (`oq`) tokens \~
+tag\:work|home       require any of these tags
+-tag\:chore           exclude tag
+file\:notes          filename contains substring
+-file\:archive        filename must NOT contain substring
+todo\:TODO|WAITING   restrict TODO states
+prio>A              compare priorities (A highest); also: prio\:A
+due<3               deadline in < 3 days (relative)
+sched>=0            scheduled today or later
+before:2025-12-31   deadline before absolute date
+after:2025-08-01    scheduled after absolute date
+is\:overdue          deadline or schedule in the past
+is\:done             only DONE
+words here          free-text includes (AND)
+-noise               free-text excludes
+
+Examples \~
+
+>
+
+```
+prio:A tag:work due<5
+```
+
+```
+tag:personal -WAITING sched>=0
+```
+
+<
+
+===============================================================================
+REFILE                                                       *org-super-agenda-refile*
+
+Press `R` on an item to start refiling via Telescope + org-telescope.
+
+* Toggle between **file** and **headline** targets with `<C-Space>`
+* The moved segment is written to disk and any unmodified open buffers reload
 
 ===============================================================================
 DEFAULT OPTIONS                                                *org-super-agenda-options*
 
 The defaults (see |lua/org-super-agenda/config.lua|) are:
->
-{ 
-  org_files           = {}, -- explicit file paths
-  org_directories     = {}, -- recurse for *.org
-  exclude_files       = {}, -- files to ignore
-  exclude_directories = {}, -- dirs to ignore
 
+>
+M.defaults = {
+  org_files           = {},
+  org_directories     = {},
+  exclude_files       = {},
+  exclude_directories = {},
   keymaps             = {
-    filter_reset = 'oa',
-    toggle_other = 'oo',
-    filter       = 'of',  -- live filter by headline (exact)
-    filter_fuzzy = 'oz',  -- live filter by headline (fuzzy)
-    filter_query = 'oq',
-    undo         = 'u',   -- undo last action
-    reschedule   = 'cs',
-    set_deadline = 'cd',
-    cycle_todo   = 't',
-    reload       = 'r',
-    refile       = 'R',  -- refile current headline via Telescope
-    hide_item    = 'x',
-    preview      = 'K',
-    reset_hidden = 'X',
+    filter_reset      = 'oa',
+    filter            = 'of',
+    filter_fuzzy      = 'oz',
+    filter_query      = 'oq',
+    undo              = 'u',
+    toggle_other      = 'oo',
+    reschedule        = 'cs',
+    set_deadline      = 'cd',
+    priority_up       = '+',
+    priority_down     = '-',
+    priority_clear    = '0',
+    priority_A        = 'A',
+    priority_B        = 'B',
+    priority_C        = 'C',
+    cycle_todo        = 't',
+    reload            = 'r',
+    refile            = 'R',
+    hide_item         = 'x',
+    preview           = 'K',
+    reset_hidden      = 'X',
+    toggle_duplicates = 'D',
+    cycle_view        = 'ov',
   },
 
   todo_states         = {
-    {
-      name           = 'TODO',
-      keymap         = 'ot',
-      color          = '#FF5555',
-      strike_through = false,
-      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-    },
-    {
-      name           = 'PROGRESS',
-      keymap         = 'op',
-      color          = '#FFAA00',
-      strike_through = false,
-      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-    },
-    {
-      name           = 'WAITING',
-      keymap         = 'ow',
-      color          = '#BD93F9',
-      strike_through = false,
-      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-    },
-    {
-      name           = 'DONE',
-      keymap         = 'od',
-      color          = '#50FA7B',
-      strike_through = true,
-      fields         = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' },
-    },
+    { name = 'TODO',     keymap = 'ot', color = '#FF5555', strike_through = false, fields = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' } },
+    { name = 'PROGRESS', keymap = 'op', color = '#FFAA00', strike_through = false, fields = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' } },
+    { name = 'WAITING',  keymap = 'ow', color = '#BD93F9', strike_through = false, fields = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' } },
+    { name = 'DONE',     keymap = 'od', color = '#50FA7B', strike_through = true,  fields = { 'filename', 'todo', 'headline', 'priority', 'date', 'tags' } },
   },
 
+  -- You can add per-group { sort = { by='deadline'|'scheduled'|'priority'|'todo'|'filename'|'headline'|'date_nearest', order='asc'|'desc' } }
   groups              = {
-    { name = "📅 Today", matcher = function(i) return i.scheduled and i.scheduled:is_today() end },
-    { name = "🗓️ Tomorrow", matcher = function(i) return i.scheduled and i.scheduled:days_from_today() == 1 end, },
     {
-      name = "⏰ Deadlines",
-      matcher = function(i)
-        return i.deadline ~= nil and i.todo_state ~= 'DONE' and
-            not i:has_tag("personal")
-      end,
+      name = "📅 Today",
+      matcher = function(i) return i.scheduled and i.scheduled:is_today() end,
+      sort = { by = 'priority', order = 'desc' }
+    },
+    {
+      name = "🗓️ Tomorrow",
+      matcher = function(i) return i.scheduled and i.scheduled:days_from_today() == 1 end
+    },
+    {
+      name = "☠️ Deadlines",
+      matcher = function(i) return i.deadline and i.todo_state ~= 'DONE' and not i:has_tag("personal") end,
+      sort = { by = 'deadline', order = 'asc' }
     },
     {
       name = "⭐ Important",
-      matcher = function(i)
-        return i.priority == "A" and
-            (i.deadline ~= nil or i.scheduled ~= nil)
-      end
+      matcher = function(i) return i.priority == "A" and (i.deadline or i.scheduled) end,
+      sort = { by = 'date_nearest', order = 'asc' }
     },
     {
-      name = '⏳ Overdue',
-      matcher = function(it)
-        return it.todo_state ~= 'DONE' and (
-          (it.deadline and it.deadline:is_past()) or
-          (it.scheduled and it.scheduled:is_past())
+      name = "⏳ Overdue",
+      matcher = function(i)
+        return i.todo_state ~= 'DONE' and (
+          (i.deadline and i.deadline:is_past()) or
+          (i.scheduled and i.scheduled:is_past())
         )
-      end
+      end,
+      sort = { by = 'date_nearest', order = 'asc' }
     },
     { name = "🏠 Personal", matcher = function(item) return item:has_tag("personal") end },
     { name = "💼 Work", matcher = function(item) return item:has_tag("work") end },
     {
       name = "📆 Upcoming",
       matcher = function(it)
-        local days = require('org-super-agenda.config').get().upcoming_days or 10
-        local deadline_ok = it.deadline and it.deadline:days_from_today() >= 0 and
-            it.deadline:days_from_today() <= days
-        local sched_ok = it.scheduled and it.scheduled:days_from_today() >= 0 and
-            it.scheduled:days_from_today() <= days
-        return deadline_ok or sched_ok
-      end
+        local days = (require('org-super-agenda.config').get().upcoming_days or 10)
+        local d1 = it.deadline and it.deadline:days_from_today()
+        local d2 = it.scheduled and it.scheduled:days_from_today()
+        local ok1 = d1 and d1 >= 0 and d1 <= days
+        local ok2 = d2 and d2 >= 0 and d2 <= days
+        return ok1 or ok2
+      end,
+      sort = { by = 'date_nearest', order = 'asc' }
     },
   },
 
-  ---------------------------------------------------------------------------
-  -- floating‑window style
   window              = {
-    width        = 0.8,
-    height       = 0.7,
-    border       = 'rounded',
-    title        = 'Super Agenda',
-    title_pos    = 'center',
-    margin_left  = 0, -- increasing this breaks stuff for now, so use with care
-    margin_right = 0, -- increasing this is fine
+    width             = 0.8,
+    height            = 0.7,
+    border            = 'rounded',
+    title             = 'Org Super Agenda',
+    title_pos         = 'center',
+    margin_left       = 0,
+    margin_right      = 0,
+    fullscreen_border = 'none', -- used when fullscreen=true
   },
 
-  ---------------------------------------------------------------------------
-  -- misc
   upcoming_days       = 10,
-  hide_empty_groups   = true,   -- set true to drop blank sections
-  keep_order          = false,   -- keep original org‑agenda sort
-  allow_duplicates    = false,   -- show items in every matching group
-  group_format        = '* %s',  -- header text for groups
-  other_group_name    = 'Other', -- title for catchall group
-  show_other_group    = false,   -- disable to remove catchall group
-  show_tags           = true,    -- display headline tags aligned right
-  show_filename       = true,    -- append the source file name to headings
-  heading_max_length  = 70,      -- truncate headings after this many characters
-  persist_hidden      = false,   -- keep hidden items across agenda reopen
-  view_mode           = 'classic', -- 'classic' | 'compact'
-  classic             = {
-    heading_order       = { 'filename', 'todo', 'headline', 'priority', 'date' },
-    short_date_labels   = false,   -- use 'S'/'D' instead of 'SCHEDULED'/'DEADLINE'
-    inline_dates        = true,    -- show SCHEDULED/DEADLINE info before TODO
-  },
-  compact             = {
-    filename_min_width = 10,        -- pad "alpha:" column at least to this
-    label_min_width    = 12,       -- pad label column ("Sched. 6x:")
-  },
+  hide_empty_groups   = true,
+  keep_order          = false,
+  allow_duplicates    = false,
+  group_format        = '* %s',
+  other_group_name    = 'Other',
+  show_other_group    = false,
+  show_tags           = true,
+  show_filename       = true,
+  heading_max_length  = 70,
+  persist_hidden      = false,
+  view_mode           = 'classic',
+  classic             = { heading_order = { 'filename', 'todo', 'priority', 'headline' }, short_date_labels = false, inline_dates = true },
+  compact             = { filename_min_width = 10, label_min_width = 12 },
+
+  -- Global fallback sort for groups that don't specify their own `sort`
+  group_sort          = { by = 'date_nearest', order = 'asc' },
+
+  debug               = false,
 }
-<
 
 ===============================================================================
+SAFETY NOTES                                                  *org-super-agenda-safety*
+
+* Refuses edits if buffer is modified in Neovim or a swapfile is detected
+* DONE items set during the session remain visible in a dedicated group
+  until the agenda window is closed ("sticky DONE")
+* The catch‑all "Other" group never collects DONE items
+
+===============================================================================
+HIGHLIGHTING                                              *org-super-agenda-highlight*
+
+Each TODO state can define a color and whether to apply strike‑through. Fields
+listed under a state control which parts (filename, todo, headline, priority,
+date, tags) receive that highlight. See |org-super-agenda-options| → `todo_states`.
+
+===============================================================================
+LICENSE                                                     *org-super-agenda-license*
+
+MIT
 
 vim:tw=78:ts=8:ft=help:norl

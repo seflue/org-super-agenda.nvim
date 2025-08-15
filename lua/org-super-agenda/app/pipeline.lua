@@ -1,6 +1,7 @@
 -- app/pipeline.lua -- pure orchestration => returns a producer(win_width)->rows,hls,line_map
-local filter = require('org-super-agenda.core.filter')
-local group  = require('org-super-agenda.core.group')
+local filter         = require('org-super-agenda.core.filter')
+local group          = require('org-super-agenda.core.group')
+local sort_core      = require('org-super-agenda.core.sort')
 local layout_classic = require('org-super-agenda.core.layout.classic')
 local layout_compact = require('org-super-agenda.core.layout.compact')
 
@@ -25,15 +26,20 @@ function Pipeline.run(source, cfg, state)
 
   -- grouping (excludes DONE from "Other" by design)
   local groups = group.group_items(items, {
-    groups = cfg.groups,
+    groups        = cfg.groups,
     allow_duplicates = state.allow_duplicates,
-    hide_empty = cfg.hide_empty_groups,
-    show_other = cfg.show_other_group,
-    other_name = cfg.other_group_name,
+    hide_empty    = cfg.hide_empty_groups,
+    show_other    = cfg.show_other_group,
+    other_name    = cfg.other_group_name,
   })
 
+  -- per-group sorting (group.sort overrides global cfg.group_sort)
+  for _, g in ipairs(groups) do
+    local spec = (g.sort and type(g.sort) == 'table') and g.sort or nil
+    sort_core.sort_items(g.items, spec, cfg)
+  end
+
   -- "sticky" DONE items (turned DONE during this session) stay visible
-  -- in a dedicated group until the float is closed.
   local sticky = {}
   for _, it in ipairs(items) do
     if it.todo_state == 'DONE' and state.sticky_done[key_of(it)] then
@@ -41,6 +47,8 @@ function Pipeline.run(source, cfg, state)
     end
   end
   if #sticky > 0 then
+    -- Keep the "Done (this session)" section sorted by recency-ish: nearest date then priority
+    sort_core.sort_items(sticky, { by='date_nearest', order='asc' }, cfg)
     groups[#groups+1] = { name = '✅ Done (this session)', items = sticky }
   end
 
