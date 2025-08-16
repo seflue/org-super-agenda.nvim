@@ -1,4 +1,4 @@
--- adapters/neovim/source_orgmode.lua -- implements SourcePort
+-- adapters/neovim/source_orgmode.lua -- implements SourcePort (with tag inheritance)
 local utils = require('org-super-agenda.adapters.neovim.utils')
 local cfg   = require('org-super-agenda.config').get
 local Date  = require('org-super-agenda.core.date')
@@ -6,6 +6,7 @@ local Item  = require('org-super-agenda.core.item')
 
 local S = {}
 
+-- Utility: expand directories/files declared in config and load orgmode files
 local function load_org_files()
   local C = cfg()
   local want, skip = {}, {}
@@ -22,7 +23,7 @@ local function load_org_files()
     end
   end
 
-  -- force reload of clean loaded buffers so orgmode re-parses
+  -- Force reload of clean loaded buffers so orgmode re-parses
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     local name = vim.api.nvim_buf_get_name(bufnr)
     if want[name] and not skip[name]
@@ -50,11 +51,24 @@ local function load_org_files()
   return files
 end
 
-local function headline_to_item(h)
+-- Merge tags with no duplicates (order: inherited first, then own tags)
+local function merge_tags(inherited, own)
+  local seen, out = {}, {}
+  for _, t in ipairs(inherited or {}) do
+    if t ~= '' and not seen[t] then seen[t] = true; out[#out+1] = t end
+  end
+  for _, t in ipairs(own or {}) do
+    if t ~= '' and not seen[t] then seen[t] = true; out[#out+1] = t end
+  end
+  return out
+end
+
+-- Convert orgmode headline → Item, honoring inherited tags
+local function headline_to_item(h, inherited_tags)
   return Item.new {
     headline   = h.title,
     level      = h.level,
-    tags       = h.tags or {},
+    tags       = merge_tags(inherited_tags, h.tags or {}),
     priority   = h.priority,
     todo_state = h.todo_value,         -- may be nil/'' for events
     scheduled  = Date.from_orgdate(h.scheduled),
@@ -67,24 +81,32 @@ end
 
 function S.collect()
   local items = {}
-  local function walk(hl)
-    items[#items+1] = headline_to_item(hl)
-    for _, c in ipairs(hl.headlines or {}) do walk(c) end
+
+  -- Walk the tree, passing accumulated (inherited) tags downwards
+  local function walk(hl, inherited_tags)
+    local all_tags = merge_tags(inherited_tags, hl.tags or {})
+    items[#items+1] = headline_to_item(hl, inherited_tags)
+    for _, c in ipairs(hl.headlines or {}) do
+      walk(c, all_tags)
+    end
   end
 
   local files = load_org_files()
   for _, file in ipairs(files) do
-    for _, hl in ipairs(file.headlines or {}) do walk(hl) end
+    for _, hl in ipairs(file.headlines or {}) do
+      -- Top-level inherits nothing initially
+      walk(hl, {})
+    end
   end
 
-  -- dedupe by file:line
+  -- Dedupe by file:line
   local seen, uniq = {}, {}
   for _, it in ipairs(items) do
     local key = string.format('%s:%s', it.file or '', it._src_line or 0)
     if not seen[key] then seen[key]=true; uniq[#uniq+1]=it end
   end
 
-  -- keep:
+  -- Keep either:
   --  • items with a known TODO state, OR
   --  • items with NO TODO but with a date (scheduled/deadline)  ← events
   local valid = {}
