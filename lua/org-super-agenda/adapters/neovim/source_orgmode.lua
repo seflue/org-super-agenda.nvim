@@ -23,16 +23,6 @@ local function load_org_files()
     end
   end
 
-  -- Force reload of clean loaded buffers so orgmode re-parses
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    local name = vim.api.nvim_buf_get_name(bufnr)
-    if want[name] and not skip[name]
-       and vim.api.nvim_buf_is_loaded(bufnr)
-       and not vim.api.nvim_buf_get_option(bufnr, 'modified') then
-      vim.api.nvim_buf_delete(bufnr, { force = true })
-    end
-  end
-
   local ok_api, api_root = pcall(require, 'orgmode.api'); if not ok_api then return {} end
   local org_api = api_root.load and api_root or api_root.org
   if not (org_api and org_api.load) then return {} end
@@ -47,7 +37,7 @@ local function load_org_files()
       end
     end
   end
-  for i,f in ipairs(files) do files[i] = f:reload() end
+  for i, f in ipairs(files) do files[i] = f:reload() end
   return files
 end
 
