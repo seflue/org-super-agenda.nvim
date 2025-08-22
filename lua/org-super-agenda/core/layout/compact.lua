@@ -53,6 +53,7 @@ function L.build(groups, win_width, cfg)
         local pri   = (it.priority and it.priority ~= '') and ('[#' .. it.priority .. ']') or nil
         local todo  = it.todo_state or ''
         local head  = truncate(it.headline or '', cfg.heading_max_length)
+        if it.has_more then head = head .. ' …' end
 
         local text, spans = '', {}
         local s_fn  = #text; text = text .. string.format('%-' .. fname_w .. 's', name); spans[#spans+1] = {field='filename', s=s_fn, e=#text, state=it.todo_state}

@@ -63,6 +63,113 @@ local function merge_tags(inherited, own)
   return out
 end
 
+local HAS_MORE_CACHE = {}
+local FILE_LINES = {}   -- [filename] -> { lines... }
+
+local function cache_key(h)
+  local f = (h.file and h.file.filename) or h.filename or ''
+  local ln = (h.position and h.position.start_line) or 0
+  return f .. ':' .. tostring(ln)
+end
+
+local function get_file_lines(fname)
+  if FILE_LINES[fname] then return FILE_LINES[fname] end
+
+  local bufnr = vim.fn.bufnr(fname)
+  local lines
+  if bufnr ~= -1 then
+    if not vim.api.nvim_buf_is_loaded(bufnr) then vim.fn.bufload(bufnr) end
+    lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  else
+    lines = vim.fn.readfile(fname)
+  end
+  FILE_LINES[fname] = lines
+  return lines
+end
+
+local function section_range(lines, pos_start)
+  local start = pos_start
+  while start > 0 and not (lines[start] or ''):match("^%*+") do start = start - 1 end
+  if start == 0 then return nil end
+  local lvl = #((lines[start] or ''):match("^(%*+)") or '')
+  local stop = #lines
+  for i = start + 1, #lines do
+    local s = (lines[i] or ''):match("^(%*+)")
+    if s and #s <= lvl then stop = i - 1; break end
+  end
+  return start, stop, lvl
+end
+
+local function strip_planning_only(s)
+  local before
+  repeat
+    before = s
+    s = s
+      :gsub('%s*SCHEDULED:%s*<[^>]+>', '')
+      :gsub('%s*DEADLINE:%s*<[^>]+>', '')
+      :gsub('%s*CLOSED:%s*%[[^%]]+%]', '')
+      :gsub('^%s*<%d%d%d%d%-%d%d%-%d%d[^>]*>%s*$', '')
+  until s == before
+  return (s:gsub('%s+', ''))
+end
+
+local function is_meta_line(s, drawer_state)
+  if s == '' then return true, drawer_state end
+  -- Drawer-Start/Ende
+  if s:match('^:%u+:%s*$') then
+    -- z.B. :PROPERTIES: oder :LOGBOOK:
+    drawer_state.open = true
+    return true, drawer_state
+  end
+  if s:match('^:END:%s*$') then
+    drawer_state.open = false
+    return true, drawer_state
+  end
+  if drawer_state.open then return true, drawer_state end
+  -- CLOCK / reine Planning / reine Timestamp
+  if s:match('^CLOCK:%s*') then return true, drawer_state end
+  if strip_planning_only(s) == '' then return true, drawer_state end
+  return false, drawer_state
+end
+
+local function headline_has_more(h)
+  local key = cache_key(h)
+  if HAS_MORE_CACHE[key] ~= nil then return HAS_MORE_CACHE[key] end
+
+  -- Kinder? → sofort ja
+  if h.headlines and #h.headlines > 0 then
+    HAS_MORE_CACHE[key] = true
+    return true
+  end
+
+  local fname = (h.file and h.file.filename) or h.filename
+  local start_l = h.position and h.position.start_line or nil
+  if not (fname and start_l) then
+    HAS_MORE_CACHE[key] = false
+    return false
+  end
+
+  local lines = get_file_lines(fname)
+  local s, e = section_range(lines, start_l)
+  if not s then HAS_MORE_CACHE[key] = false; return false end
+
+  local drawer_state = { open = false }
+  -- Inhalt beginnt typischerweise ab s+1
+  for i = s + 1, e do
+    local raw = lines[i] or ''
+    local trimmed = raw:gsub('^%s+', '')
+    local meta, new_state = is_meta_line(trimmed, drawer_state)
+    drawer_state = new_state
+    if not meta then
+      HAS_MORE_CACHE[key] = true
+      return true
+    end
+  end
+
+  HAS_MORE_CACHE[key] = false
+  return false
+end
+
 -- Convert orgmode headline → Item, honoring inherited tags
 local function headline_to_item(h, inherited_tags)
   return Item.new {
@@ -76,10 +183,15 @@ local function headline_to_item(h, inherited_tags)
     properties = h.properties or {},
     file       = h.file and h.file.filename or h.filename,
     _src_line  = h.position and h.position.start_line,
+    has_more   = headline_has_more(h),
   }
 end
 
 function S.collect()
+  -- Reset Caches pro Lauf
+  HAS_MORE_CACHE = {}
+  FILE_LINES = {}
+
   local items = {}
 
   -- Walk the tree, passing accumulated (inherited) tags downwards
@@ -92,6 +204,14 @@ function S.collect()
   end
 
   local files = load_org_files()
+  -- Optional: Vorab Lines-Cache füllen (einmal pro Datei)
+  for _, f in ipairs(files) do
+    local fname = (f.file and f.file.filename) or f.filename
+    if fname and not FILE_LINES[fname] then
+      get_file_lines(fname)
+    end
+  end
+
   for _, file in ipairs(files) do
     for _, hl in ipairs(file.headlines or {}) do
       -- Top-level inherits nothing initially

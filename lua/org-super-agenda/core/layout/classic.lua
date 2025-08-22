@@ -12,6 +12,11 @@ local function classic_prefix(it, cfg)
     priority = pri,
     headline = truncate(it.headline or '', cfg.heading_max_length),
   }
+  -- append “ …” if item has more content/subheadings
+  if it.has_more then
+    parts.headline = (parts.headline or '') .. ' …'
+  end
+
   local order  = vim.deepcopy(cfg.classic.heading_order or { 'filename', 'todo', 'priority', 'headline' })
   local tok    = {}
   if parts.filename and order[1] == 'filename' then table.insert(tok, '[' .. parts.filename .. ']'); table.remove(order, 1) end
@@ -52,6 +57,8 @@ function L.build(groups, win_width, cfg)
           priority = pri,
           headline = truncate(it.headline or '', cfg.heading_max_length),
         }
+        if it.has_more then parts.headline = (parts.headline or '') .. ' …' end
+
         local order = vim.deepcopy(cfg.classic.heading_order or { 'filename','todo','priority','headline' })
         local col = #indent
         local spans, text = {}, indent
@@ -102,4 +109,3 @@ function L.build(groups, win_width, cfg)
 end
 
 return L
-
