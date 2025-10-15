@@ -174,6 +174,7 @@ local function headline_to_item(h, inherited_tags)
     file       = h.file and h.file.filename or h.filename,
     _src_line  = h.position and h.position.start_line,
     has_more   = headline_has_more(h),
+    is_archived = h.is_archived or false,
   }
 end
 
