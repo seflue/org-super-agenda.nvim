@@ -222,36 +222,38 @@ function A.set_keymaps(buf, win, line_map, reopen)
   end
   for _, k in ipairs({ 'q', '<Esc>' }) do vim.keymap.set('n', k, wipe, { buffer = buf, silent = true }) end
 
-  -- open file in floating window (Enter)
-  vim.keymap.set('n', '<CR>', function()
-    with_headline(line_map, function(cur, hl)
-      local agendabuf = vim.api.nvim_get_current_buf()
-      vim.cmd('edit ' .. vim.fn.fnameescape(hl.file.filename))
-      vim.api.nvim_win_set_cursor(0, { hl.position.start_line, 0 })
-      local filebuf = vim.api.nvim_get_current_buf()
-      pcall(vim.api.nvim_buf_delete, agendabuf, { force = true })
+  -- edit file in floating window (configurable keymap, default Enter)
+  if cfg.keymaps.edit and cfg.keymaps.edit ~= '' then
+    vim.keymap.set('n', cfg.keymaps.edit, function()
+      with_headline(line_map, function(cur, hl)
+        local agendabuf = vim.api.nvim_get_current_buf()
+        vim.cmd('edit ' .. vim.fn.fnameescape(hl.file.filename))
+        vim.api.nvim_win_set_cursor(0, { hl.position.start_line, 0 })
+        local filebuf = vim.api.nvim_get_current_buf()
+        pcall(vim.api.nvim_buf_delete, agendabuf, { force = true })
 
-      -- Add q/Esc keymaps to file buffer for consistent close behavior
-      local function close_file()
-        if vim.api.nvim_buf_is_valid(filebuf) then
-          pcall(vim.api.nvim_buf_delete, filebuf, { force = false })
+        -- Add q/Esc keymaps to file buffer for consistent close behavior
+        local function close_file()
+          if vim.api.nvim_buf_is_valid(filebuf) then
+            pcall(vim.api.nvim_buf_delete, filebuf, { force = false })
+          end
         end
-      end
-      for _, k in ipairs({ 'q', '<Esc>' }) do
-        vim.keymap.set('n', k, close_file, { buffer = filebuf, silent = true })
-      end
+        for _, k in ipairs({ 'q', '<Esc>' }) do
+          vim.keymap.set('n', k, close_file, { buffer = filebuf, silent = true })
+        end
 
-      vim.api.nvim_create_autocmd('BufWinLeave', {
-        buffer = filebuf, once = true,
-        callback = function()
-          vim.schedule(function()
-            pcall(vim.api.nvim_buf_delete, filebuf, { force = true })
-            reopen(cur)
-          end)
-        end,
-      })
-    end)
-  end, { buffer = buf, silent = true })
+        vim.api.nvim_create_autocmd('BufWinLeave', {
+          buffer = filebuf, once = true,
+          callback = function()
+            vim.schedule(function()
+              pcall(vim.api.nvim_buf_delete, filebuf, { force = true })
+              reopen(cur)
+            end)
+          end,
+        })
+      end)
+    end, { buffer = buf, silent = true })
+  end
 
   -- goto file in previous window (configurable keymap, default Tab)
   if cfg.keymaps.goto and cfg.keymaps.goto ~= '' then
