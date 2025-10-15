@@ -222,7 +222,7 @@ function A.set_keymaps(buf, win, line_map, reopen)
   end
   for _, k in ipairs({ 'q', '<Esc>' }) do vim.keymap.set('n', k, wipe, { buffer = buf, silent = true }) end
 
-  -- open file
+  -- open file in floating window (Enter)
   vim.keymap.set('n', '<CR>', function()
     with_headline(line_map, function(cur, hl)
       local agendabuf = vim.api.nvim_get_current_buf()
@@ -252,6 +252,36 @@ function A.set_keymaps(buf, win, line_map, reopen)
       })
     end)
   end, { buffer = buf, silent = true })
+
+  -- goto file in previous window (configurable keymap, default Tab)
+  if cfg.keymaps.goto and cfg.keymaps.goto ~= '' then
+    vim.keymap.set('n', cfg.keymaps.goto, function()
+      with_headline(line_map, function(cur, hl)
+        local ViewPort = require('org-super-agenda.adapters.neovim.view_float')
+        local prev_win = ViewPort.prev_win()
+
+        -- Close the floating window
+        if vim.api.nvim_win_is_valid(win) then
+          pcall(vim.api.nvim_win_close, win, true)
+        end
+        if vim.api.nvim_buf_is_valid(buf) then
+          pcall(vim.api.nvim_buf_delete, buf, { force = true })
+        end
+        require('org-super-agenda').on_close()
+
+        -- Switch to previous window and open file
+        if prev_win and vim.api.nvim_win_is_valid(prev_win) then
+          vim.api.nvim_set_current_win(prev_win)
+          vim.cmd('edit ' .. vim.fn.fnameescape(hl.file.filename))
+          vim.api.nvim_win_set_cursor(0, { hl.position.start_line, 0 })
+        else
+          -- Fallback: open in current window if previous window is invalid
+          vim.cmd('edit ' .. vim.fn.fnameescape(hl.file.filename))
+          vim.api.nvim_win_set_cursor(0, { hl.position.start_line, 0 })
+        end
+      end)
+    end, { buffer = buf, silent = true })
+  end
 
   -- reschedule / deadline (unchanged but undo-aware)
   vim.keymap.set('n', cfg.keymaps.reschedule, function()
