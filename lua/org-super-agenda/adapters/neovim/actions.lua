@@ -210,7 +210,14 @@ function A.set_keymaps(buf, win, line_map, reopen)
 
   -- close
   local function wipe()
-    if vim.api.nvim_buf_is_valid(buf) then pcall(vim.api.nvim_buf_delete, buf, { force = true }) end
+    -- Close the window (which also handles the buffer)
+    if vim.api.nvim_win_is_valid(win) then
+      pcall(vim.api.nvim_win_close, win, true)
+    end
+    -- Clean up buffer if it somehow still exists
+    if vim.api.nvim_buf_is_valid(buf) then
+      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+    end
     require('org-super-agenda').on_close()
   end
   for _, k in ipairs({ 'q', '<Esc>' }) do vim.keymap.set('n', k, wipe, { buffer = buf, silent = true }) end
@@ -223,6 +230,17 @@ function A.set_keymaps(buf, win, line_map, reopen)
       vim.api.nvim_win_set_cursor(0, { hl.position.start_line, 0 })
       local filebuf = vim.api.nvim_get_current_buf()
       pcall(vim.api.nvim_buf_delete, agendabuf, { force = true })
+
+      -- Add q/Esc keymaps to file buffer for consistent close behavior
+      local function close_file()
+        if vim.api.nvim_buf_is_valid(filebuf) then
+          pcall(vim.api.nvim_buf_delete, filebuf, { force = false })
+        end
+      end
+      for _, k in ipairs({ 'q', '<Esc>' }) do
+        vim.keymap.set('n', k, close_file, { buffer = filebuf, silent = true })
+      end
+
       vim.api.nvim_create_autocmd('BufWinLeave', {
         buffer = filebuf, once = true,
         callback = function()

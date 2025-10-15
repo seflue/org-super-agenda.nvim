@@ -39,7 +39,25 @@ local function render(cursor, opts, reuse)
   else view.render(producer, s.cursor, s.view_mode, view_opts) end
 end
 
-function Services.agenda.open(opts) store.set_cursor(nil); render(nil, opts or {}, false) end
+function Services.agenda.open(opts)
+  -- If already open, just focus the window and optionally refresh
+  if view.is_open() then
+    local buf = view._buf
+    local win = view._win
+    if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_win_is_valid(win) then
+      -- Focus the existing window
+      vim.api.nvim_set_current_win(win)
+      -- Refresh with new options if provided
+      if opts and (opts.fullscreen ~= nil or opts.todo_filter or opts.headline_filter) then
+        render(vim.api.nvim_win_get_cursor(0), opts, true)
+      end
+      return
+    end
+  end
+  -- Not open yet, create new window
+  store.set_cursor(nil)
+  render(nil, opts or {}, false)
+end
 function Services.agenda.refresh(cursor, opts) render(cursor, opts, true) end
 function Services.agenda.on_close()
   if not cfg().persist_hidden then store.reset_hidden() end
