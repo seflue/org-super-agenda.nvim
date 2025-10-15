@@ -5,9 +5,6 @@
 
 A Neovim plugin inspired by [org-super-agenda](https://github.com/alphapapa/org-super-agenda) for Emacs. Organize your org-mode agenda into smart, configurable groups — fast, keyboard-driven, and safe-by-design.
 
-> **Note**
-> This project is undergoing rapid iterations. Features land frequently; expect dragons (but friendly ones).
-
 ---
 
 ## ✨ Features
